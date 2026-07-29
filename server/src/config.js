@@ -28,7 +28,14 @@ const config = {
   allowDevAuth: bool(process.env.ALLOW_DEV_AUTH, false),
   initDataMaxAgeSec: Number(process.env.INITDATA_MAX_AGE) || 24 * 60 * 60,
   trustProxy: bool(process.env.TRUST_PROXY, true),
+  // --- Kanal, majburiy obuna, telefon ---
+  channelUsername: (process.env.CHANNEL_USERNAME || "shop_kanali").trim().replace(/^@/, ""),
+  botUsername: (process.env.BOT_USERNAME || "").trim().replace(/^@/, ""),
+  requireSubscription: bool(process.env.REQUIRE_SUBSCRIPTION, true),
+  requirePhone: bool(process.env.REQUIRE_PHONE, true),
+  postProductsToChannel: bool(process.env.POST_PRODUCTS_TO_CHANNEL, true),
 };
+config.channelId = (process.env.CHANNEL_ID || `@${config.channelUsername}`).trim();
 
 // Webhook uchun maxfiy yo'l (token'dan deterministik hosil qilinadi)
 config.webhookPath =

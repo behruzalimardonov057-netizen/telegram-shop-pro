@@ -504,6 +504,11 @@ router.post("/admin/products", adminAuth, validate(productSchema), (req, res) =>
     p.images.forEach((url, i) => q.addImg.run(newId, url, i));
     return newId;
   })();
+  // Kanalga fon rejimida yuboramiz
+  try {
+    const { postProductToChannel } = require("./bot");
+    setImmediate(() => { postProductToChannel(pid).catch(() => {}); });
+  } catch (e) {}
   res.json({ id: pid });
 });
 

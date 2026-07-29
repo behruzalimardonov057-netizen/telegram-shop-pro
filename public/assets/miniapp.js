@@ -648,7 +648,9 @@ function ProfilePage({ lang, setLang, go, user, config }) {
       <${TopBar} title=${t.profile}/>
       <div class="p-4 space-y-3">
         <div class="card-box flex items-center gap-3">
-          <div class="avatar">${(user?.first_name || "?")[0]}</div>
+          ${user?.photo_url
+            ? html`<img src=${user.photo_url} alt="" class="avatar object-cover" style="width:56px;height:56px;border-radius:9999px;"/>`
+            : html`<div class="avatar">${(user?.first_name || "?")[0]}</div>`}
           <div class="min-w-0">
             <div class="font-semibold truncate">${[user?.first_name, user?.last_name].filter(Boolean).join(" ") || "—"}</div>
             <div class="text-[13px] opacity-55 truncate">${user?.username ? "@" + user.username : user?.phone || ""}</div>

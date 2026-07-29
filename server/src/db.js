@@ -154,6 +154,8 @@ addColumn("orders", "currency", "TEXT");
 addColumn("orders", "paid", "INTEGER DEFAULT 0");
 addColumn("orders", "receipt", "TEXT");
 addColumn("users", "last_seen", "INTEGER");
+addColumn("users", "lang_set", "INTEGER DEFAULT 0");
+addColumn("users", "photo_url", "TEXT");
 addColumn("products", "sold", "INTEGER DEFAULT 0");
 addColumn("countries", "free_from", "INTEGER DEFAULT 0");
 addColumn("promo_codes", "min_total", "INTEGER DEFAULT 0");
@@ -350,6 +352,8 @@ const q = {
 
   // Aliases (eski nomlar bilan moslik)
   countProducts: db.prepare("SELECT COUNT(*) c FROM products"),
+  setLangSet: db.prepare("UPDATE users SET lang_set = 1 WHERE tg_id = ?"),
+  setPhotoUrl: db.prepare("UPDATE users SET photo_url = ? WHERE tg_id = ?"),
   markSeen: db.prepare("UPDATE users SET last_seen = strftime('%s','now') WHERE tg_id = ?"),
 };
 
