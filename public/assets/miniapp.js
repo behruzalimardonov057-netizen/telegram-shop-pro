@@ -640,35 +640,65 @@ function FavoritesPage({ lang, go, config }) {
     </div>`;
 }
 
+function getTheme(){ try { return localStorage.getItem("theme") || "light"; } catch(e){ return "light"; } }
+function applyTheme(v){
+  document.documentElement.dataset.theme = v;
+  try { localStorage.setItem("theme", v); } catch(e){}
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", v === "dark" ? "#0e0f14" : "#ffffff");
+}
+
 function ProfilePage({ lang, setLang, go, user, config }) {
   const t = T[lang];
+  const [theme, setTheme] = useState(getTheme());
+  const tgU = tg?.initDataUnsafe?.user || {};
+  const photo = user?.photo_url || tgU.photo_url;
+  const fullName = [user?.first_name || tgU.first_name, user?.last_name || tgU.last_name].filter(Boolean).join(" ") || "—";
+  const uname = user?.username || tgU.username;
+  const uid = user?.tg_id || user?.id || tgU.id;
   const support = config?.support_username ? `https://t.me/${String(config.support_username).replace(/^@/, "")}` : null;
+  const initial = (fullName || "?")[0];
   return html`
     <div class="pb-24">
       <${TopBar} title=${t.profile}/>
       <div class="p-4 space-y-3">
-        <div class="card-box flex items-center gap-3">
-          ${user?.photo_url
-            ? html`<img src=${user.photo_url} alt="" class="avatar object-cover" style="width:56px;height:56px;border-radius:9999px;"/>`
-            : html`<div class="avatar">${(user?.first_name || "?")[0]}</div>`}
-          <div class="min-w-0">
-            <div class="font-semibold truncate">${[user?.first_name, user?.last_name].filter(Boolean).join(" ") || "—"}</div>
-            <div class="text-[13px] opacity-55 truncate">${user?.username ? "@" + user.username : user?.phone || ""}</div>
+        <div class="card-box pop" style="background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff">
+          <div class="flex items-center gap-3">
+            ${photo
+              ? html`<img src=${photo} alt="" class="float" style="width:64px;height:64px;border-radius:9999px;object-fit:cover;border:2px solid rgba(255,255,255,.6)"/>`
+              : html`<div class="avatar float" style="width:64px;height:64px;background:rgba(255,255,255,.22);color:#fff">${initial}</div>`}
+            <div class="min-w-0">
+              <div class="font-bold text-[17px] truncate">${fullName}</div>
+              <div class="text-[13px] opacity-90 truncate">${uname ? "@" + uname : (user?.phone || "Telegram foydalanuvchi")}</div>
+              ${uid ? html`<div class="text-[11px] opacity-75">🆔 ${uid}</div>` : null}
+            </div>
+          </div>
+          ${user?.phone ? html`<div class="text-[12px] opacity-90 mt-2">📱 ${user.phone}</div>` : null}
+        </div>
+
+        <div class="card-box">
+          <div class="text-xs opacity-60 mb-2">🎨 Ko'rinish / Тема / Theme</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onClick=${() => { haptic(); applyTheme("light"); setTheme("light"); }} class=${theme === "light" ? "opt opt-on press" : "opt press"}>⚪️ Oq</button>
+            <button onClick=${() => { haptic(); applyTheme("dark"); setTheme("dark"); }} class=${theme === "dark" ? "opt opt-on press" : "opt press"}>⚫️ Qora</button>
           </div>
         </div>
-        <button onClick=${() => go("/orders")} class="menu-row">📦 ${t.my_orders} <span class="opacity-40">›</span></button>
-        <button onClick=${() => go("/favorites")} class="menu-row">❤️ ${t.favorites} <span class="opacity-40">›</span></button>
-        ${support && html`<a href=${support} target="_blank" class="menu-row">💬 ${t.support} <span class="opacity-40">›</span></a>`}
-        ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="menu-row">📞 ${config.support_phone} <span class="opacity-40">›</span></a>`}
+
+        <button onClick=${() => go("/orders")} class="menu-row press">📦 ${t.my_orders} <span class="opacity-40">›</span></button>
+        <button onClick=${() => go("/favorites")} class="menu-row press">❤️ ${t.favorites} <span class="opacity-40">›</span></button>
+        ${support && html`<a href=${support} target="_blank" class="menu-row press">💬 ${t.support || "Yordam"} <span class="opacity-40">›</span></a>`}
+        ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="menu-row press">📞 ${config.support_phone} <span class="opacity-40">›</span></a>`}
+        ${config?.channel_username && html`<a href=${"https://t.me/" + String(config.channel_username).replace(/^@/, "")} target="_blank" class="menu-row press">📢 Rasmiy kanal <span class="opacity-40">›</span></a>`}
+
         <div class="card-box">
           <div class="text-xs opacity-60 mb-2">🌐 ${t.change_lang}</div>
           <div class="grid grid-cols-2 gap-2">
             ${Object.entries(LANG_NAMES).map(([k, v]) => html`
-              <button key=${k} onClick=${() => { haptic(); setLang(k); }} class=${lang === k ? "opt opt-on" : "opt"}>${v}</button>`)}
+              <button key=${k} onClick=${() => { haptic(); setLang(k); }} class=${lang === k ? "opt opt-on press" : "opt press"}>${v}</button>`)}
           </div>
         </div>
         ${config?.about && html`<div class="card-box text-[13px] opacity-75 whitespace-pre-line">${config.about}</div>`}
-        <div class="text-center text-[11px] opacity-35 pt-2">${config?.shop_name || ""} · v2.0</div>
+        <div class="text-center text-[11px] opacity-35 pt-2">${config?.shop_name || "Baraka Shop"} · v2.1</div>
       </div>
     </div>`;
 }
