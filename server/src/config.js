@@ -8,11 +8,24 @@ function bool(v, def = false) {
 
 const isProd = (process.env.NODE_ENV || "production") === "production";
 
+// PUBLIC_URL berilmagan bo'lsa Railway avtomatik bergan domendan foydalanamiz.
+// Aks holda Mini App tugmasi noto'g'ri manzilga ishora qiladi va 404 chiqadi.
+function resolvePublicUrl() {
+  const explicit = (process.env.PUBLIC_URL || "").trim();
+  const railway =
+    (process.env.RAILWAY_PUBLIC_DOMAIN || "").trim() ||
+    (process.env.RAILWAY_STATIC_URL || "").trim();
+  let url = explicit || (railway ? (railway.startsWith("http") ? railway : `https://${railway}`) : "");
+  url = url.replace(/\/+$/, "");
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+  return url;
+}
+
 const config = {
   isProd,
   port: Number(process.env.PORT) || 3000,
   botToken: (process.env.BOT_TOKEN || "").trim(),
-  publicUrl: (process.env.PUBLIC_URL || "").trim().replace(/\/+$/, ""),
+  publicUrl: resolvePublicUrl(),
   adminIds: (process.env.ADMIN_TG_IDS || "")
     .split(",")
     .map((s) => Number(s.trim()))
