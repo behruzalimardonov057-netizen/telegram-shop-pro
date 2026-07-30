@@ -303,14 +303,7 @@ function startBot() {
     .then((me) => { if (me?.username) config.botUsername = config.botUsername || me.username; })
     .catch(() => {});
 
-  bot
-    .setMyCommands([
-      { command: "start", description: "🛍 Do'kon / Магазин / Shop" },
-      { command: "orders", description: "📦 Buyurtmalarim" },
-      { command: "lang", description: "🌐 Til / Язык / Language" },
-      { command: "help", description: "ℹ️ Yordam" },
-    ])
-    .catch(() => {});
+  setupCommandMenus();
 
   bot.onText(/^\/start(?:\s+(\S+))?/, async (msg) => {
     const f = msg.from;
@@ -325,7 +318,12 @@ function startBot() {
 
   bot.onText(/^\/lang/, (msg) => safeSend(msg.chat.id, tr(userLang(msg.from.id), "choose_lang"), langKeyboard()));
   bot.onText(/^\/help/, (msg) => safeSend(msg.chat.id, tr(userLang(msg.from.id), "help")));
-  bot.onText(/^\/orders/, (msg) => sendOrders(msg.chat.id, msg.from.id));
+  bot.onText(/^\/orders\b/, (msg) => {
+    // Admin uchun /orders — bot_admin.js dagi boshqaruv paneli javob beradi
+    if (ADMIN_IDS.includes(msg.from.id)) return;
+    sendOrders(msg.chat.id, msg.from.id);
+  });
+  bot.onText(/^\/myorders\b/, (msg) => sendOrders(msg.chat.id, msg.from.id));
 
   bot.on("callback_query", async (cq) => {
     try {
@@ -385,6 +383,45 @@ function startBot() {
   });
 
   return bot;
+}
+
+/* ------------------ Buyruqlar menyusi (/ tugmasi) ------------------ */
+const USER_COMMANDS = [
+  { command: "start", description: "🛍 Do'kon / Магазин / Shop" },
+  { command: "orders", description: "📦 Buyurtmalarim" },
+  { command: "lang", description: "🌐 Til / Язык / Language" },
+  { command: "help", description: "ℹ️ Yordam" },
+];
+
+const ADMIN_COMMANDS = [
+  { command: "admin", description: "🛠 Admin panel" },
+  { command: "orders", description: "📦 Buyurtmalar boshqaruvi" },
+  { command: "myorders", description: "🛍 Mening buyurtmalarim" },
+  { command: "find", description: "🔎 Buyurtma qidirish: /find matn" },
+  { command: "clearfilter", description: "🧹 Filtrni tozalash" },
+  { command: "report", description: "📊 Kunlik hisobot" },
+  { command: "monitoring", description: "📈 Monitoring" },
+  { command: "errors", description: "⚠️ Xatoliklar" },
+  { command: "queue", description: "🔁 Navbat" },
+  { command: "health", description: "❤️ Tizim holati" },
+  { command: "audit", description: "📜 Audit jurnali" },
+  { command: "rbac", description: "🔐 Rollar" },
+  { command: "backup", description: "💾 Zaxira olish" },
+  { command: "backups", description: "🗂 Zaxiralar ro'yxati" },
+  { command: "restore", description: "♻️ Zaxiradan tiklash" },
+  { command: "logzip", description: "📦 Loglarni yuklab olish" },
+  { command: "lang", description: "🌐 Til" },
+];
+
+function setupCommandMenus() {
+  if (!bot) return;
+  bot.setMyCommands(USER_COMMANDS, { scope: { type: "default" } }).catch(() => {});
+  // Har bir admin uchun shaxsiy chatda to'liq buyruqlar menyusi
+  for (const id of ADMIN_IDS) {
+    bot
+      .setMyCommands(ADMIN_COMMANDS, { scope: { type: "chat", chat_id: id } })
+      .catch((e) => logger.warn("bot", `Admin menyusi o'rnatilmadi (${id}): ${e.message}`));
+  }
 }
 
 async function sendOrders(chatId, userId) {
