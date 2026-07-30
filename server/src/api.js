@@ -136,6 +136,7 @@ router.get("/config", (req, res) => {
     payment_methods: methods,
     card_number: s.card_number,
     card_holder: s.card_holder,
+    channel_username: config.channelUsername,
   });
 });
 
