@@ -4,19 +4,28 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#ffffff" />
-<title>Shop</title>
+<title>Baraka Shop</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   :root{
-    --bg:var(--tg-theme-bg-color,#ffffff);
-    --surface:var(--tg-theme-secondary-bg-color,#f3f4f6);
-    --text:var(--tg-theme-text-color,#0f172a);
-    --hint:var(--tg-theme-hint-color,#8b95a1);
-    --brand:var(--tg-theme-button-color,#2481cc);
-    --brandText:var(--tg-theme-button-text-color,#ffffff);
+    --bg:#ffffff; --surface:#f4f4f7; --text:#0f1729; --hint:#8b95a1;
+    --brand:#7000ff; --brand2:#a855f7; --brandText:#ffffff;
     --line:color-mix(in srgb, var(--text) 10%, transparent);
   }
+  html[data-theme="dark"]{
+    --bg:#0e0f14; --surface:#191b23; --text:#f2f3f7; --hint:#98a1b2;
+    --brand:#8b5cf6; --brand2:#c084fc; --brandText:#ffffff;
+    --line:color-mix(in srgb, #ffffff 12%, transparent);
+  }
+  html{transition:background .25s ease}
+  .brand-grad{background:linear-gradient(135deg,var(--brand),var(--brand2))}
+  .press{transition:transform .12s ease}
+  .press:active{transform:scale(.94)}
+  .pop{animation:pop .35s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+  .float{animation:fl 3.4s ease-in-out infinite}
+  @keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
   html,body,#root{height:100%}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
   .no-scrollbar::-webkit-scrollbar{display:none}
@@ -105,6 +114,7 @@
 </style>
 </head>
 <body>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"light"}catch(e){}</script>
 <div id="root"></div>
 <script type="module" src="/assets/miniapp.js"></script>
 </body>
