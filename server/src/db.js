@@ -193,7 +193,7 @@ seed();
 const DEFAULT_SETTINGS = {
   shop_name: process.env.SHOP_NAME || "Shop",
   currency: process.env.CURRENCY || "UZS",
-  support_phone: "+998 90 000 00 00",
+  support_phone: process.env.SUPPORT_PHONE || "+998 95 390 94 77",
   support_username: "",
   about: "",
   free_shipping_from: "0",
@@ -208,6 +208,9 @@ const DEFAULT_SETTINGS = {
 function ensureSettings() {
   const ins = db.prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)");
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) ins.run(k, String(v));
+  // Eski placeholder raqamni haqiqiy qo'llab-quvvatlash raqamiga almashtiramiz
+  db.prepare("UPDATE settings SET value=? WHERE key='support_phone' AND (value='' OR value='+998 90 000 00 00')")
+    .run(DEFAULT_SETTINGS.support_phone);
 }
 
 function getSettings() {
