@@ -6,86 +6,61 @@ const { logger } = require("./logger");
 const { enqueue, retryAsync } = require("./retry");
 
 const ADMIN_IDS = config.adminIds;
-const ADMIN_BTN = "🛠 Admin panel";
 
 /* ----------------------------- i18n ----------------------------- */
 const T = {
   uz: {
-    choose_lang: "🌐 <b>Tilni tanlang</b> / Выберите язык / Choose language",
-    welcome: "Assalomu alaykum, <b>{name}</b>! 🎉\n\n<b>{shop}</b>ga xush kelibsiz — <i>ishonchli va tez xarid</i> uchun eng qulay platforma.\n\n🛍 Katalogni ko'rish uchun pastdagi tugmani bosing.",
+    choose_lang: "🌐 Tilni tanlang / Выберите язык / Choose language",
+    welcome: "Assalomu alaykum, {name}! 🛍\n\n{shop} do'koniga xush kelibsiz.\nQuyidagi tugma orqali do'konni oching.",
     open_shop: "🛍 Do'konni ochish",
     my_orders: "📦 Buyurtmalarim",
     contact: "📞 Aloqa",
     lang_btn: "🌐 Til",
-    help: "ℹ️ /start — do'kon · /orders — buyurtmalar · /lang — til",
+    help: "ℹ️ Yordam: /start — do'kon, /orders — buyurtmalar, /lang — til",
     changed_lang: "✅ Til o'zgartirildi",
     need_https: "⚠️ Do'kon hozircha sozlanmoqda. Iltimos keyinroq urinib ko'ring.",
     no_orders: "📦 Sizda hali buyurtma yo'q.",
-    contact_txt: "📞 <b>Yordam markazi</b>\n\n{phone}\n{username}\n\n<i>Har kuni 09:00 — 22:00</i>",
+    contact_txt: "📞 {phone}\n{username}",
     order_line: "<b>Buyurtma #{id}</b> — {status}\n{list}\n\n💰 Jami: <b>{total}</b>",
     status_changed: "🔔 <b>Buyurtma #{id}</b> holati: <b>{status}</b>{comment}",
     blocked: "⛔️ Sizning hisobingiz bloklangan.",
-    ask_phone: "📱 <b>Ro'yxatdan o'tish</b>\n\nDo'konga kirish uchun telefon raqamingizni yuboring — buyurtmani tez rasmiylashtirish uchun kerak.\n\n👇 Pastdagi <b>“📱 Raqamni yuborish”</b> tugmasini bosing.",
-    share_phone: "📱 Raqamni yuborish",
-    phone_saved: "✅ Raqam saqlandi — rahmat!",
-    sub_required: "📢 <b>Do'konga kirish uchun rasmiy kanalimizga obuna bo'ling:</b>\n\n👉 {channel}\n\nObuna bo'lgach <b>“✅ Obuna bo'ldim”</b> tugmasini bosing.",
-    open_channel: "📢 Kanalga o'tish",
-    check_sub: "✅ Obuna bo'ldim",
-    sub_ok: "🎉 Rahmat! Endi do'kondan foydalanishingiz mumkin.",
-    sub_fail: "❌ Siz hali obuna bo'lmadingiz. Iltimos, kanalga qo'shiling va qayta urinib ko'ring.",
   },
   ru: {
-    choose_lang: "🌐 <b>Выберите язык</b>",
-    welcome: "Здравствуйте, <b>{name}</b>! 🎉\n\nДобро пожаловать в <b>{shop}</b> — <i>надёжный магазин</i> с быстрой доставкой.\n\n🛍 Нажмите кнопку ниже, чтобы открыть каталог.",
+    choose_lang: "🌐 Выберите язык",
+    welcome: "Здравствуйте, {name}! 🛍\n\nДобро пожаловать в {shop}.\nОткройте магазин кнопкой ниже.",
     open_shop: "🛍 Открыть магазин",
     my_orders: "📦 Мои заказы",
     contact: "📞 Контакты",
     lang_btn: "🌐 Язык",
-    help: "ℹ️ /start — магазин · /orders — заказы · /lang — язык",
+    help: "ℹ️ /start — магазин, /orders — заказы, /lang — язык",
     changed_lang: "✅ Язык изменён",
     need_https: "⚠️ Магазин настраивается. Попробуйте позже.",
     no_orders: "📦 Заказов пока нет.",
-    contact_txt: "📞 <b>Служба поддержки</b>\n\n{phone}\n{username}\n\n<i>Ежедневно 09:00 — 22:00</i>",
+    contact_txt: "📞 {phone}\n{username}",
     order_line: "<b>Заказ #{id}</b> — {status}\n{list}\n\n💰 Итого: <b>{total}</b>",
     status_changed: "🔔 <b>Заказ #{id}</b> статус: <b>{status}</b>{comment}",
     blocked: "⛔️ Ваш аккаунт заблокирован.",
-    ask_phone: "📱 <b>Регистрация</b>\n\nОтправьте свой номер телефона, чтобы войти в магазин.\n\n👇 Нажмите кнопку <b>“📱 Отправить номер”</b>.",
-    share_phone: "📱 Отправить номер",
-    phone_saved: "✅ Номер сохранён — спасибо!",
-    sub_required: "📢 <b>Подпишитесь на наш канал, чтобы войти в магазин:</b>\n\n👉 {channel}\n\nПосле подписки нажмите <b>“✅ Я подписался”</b>.",
-    open_channel: "📢 Перейти в канал",
-    check_sub: "✅ Я подписался",
-    sub_ok: "🎉 Спасибо! Теперь можно пользоваться магазином.",
-    sub_fail: "❌ Подписка не найдена. Пожалуйста, подпишитесь и попробуйте снова.",
   },
   en: {
-    choose_lang: "🌐 <b>Choose your language</b>",
-    welcome: "Hello, <b>{name}</b>! 🎉\n\nWelcome to <b>{shop}</b> — a <i>trusted shop</i> with fast delivery.\n\n🛍 Tap the button below to open the catalog.",
+    choose_lang: "🌐 Choose language",
+    welcome: "Hello, {name}! 🛍\n\nWelcome to {shop}.\nOpen the shop with the button below.",
     open_shop: "🛍 Open shop",
     my_orders: "📦 My orders",
     contact: "📞 Contact",
     lang_btn: "🌐 Language",
-    help: "ℹ️ /start — shop · /orders — orders · /lang — language",
+    help: "ℹ️ /start — shop, /orders — orders, /lang — language",
     changed_lang: "✅ Language changed",
     need_https: "⚠️ The shop is being configured. Please try later.",
     no_orders: "📦 No orders yet.",
-    contact_txt: "📞 <b>Support</b>\n\n{phone}\n{username}\n\n<i>Daily 09:00 — 22:00</i>",
+    contact_txt: "📞 {phone}\n{username}",
     order_line: "<b>Order #{id}</b> — {status}\n{list}\n\n💰 Total: <b>{total}</b>",
     status_changed: "🔔 <b>Order #{id}</b> status: <b>{status}</b>{comment}",
     blocked: "⛔️ Your account is blocked.",
-    ask_phone: "📱 <b>Sign up</b>\n\nPlease share your phone number to enter the shop.\n\n👇 Tap <b>“📱 Share number”</b>.",
-    share_phone: "📱 Share number",
-    phone_saved: "✅ Phone saved — thank you!",
-    sub_required: "📢 <b>Please subscribe to our official channel to use the shop:</b>\n\n👉 {channel}\n\nAfter subscribing tap <b>“✅ I subscribed”</b>.",
-    open_channel: "📢 Open channel",
-    check_sub: "✅ I subscribed",
-    sub_ok: "🎉 Thanks! You can use the shop now.",
-    sub_fail: "❌ You are not subscribed yet. Please join and try again.",
   },
 };
-T.kk = { ...T.ru };
-T.tr = { ...T.en };
-T.tg = { ...T.ru };
+T.kk = { ...T.ru, open_shop: "🛍 Дүкенді ашу", my_orders: "📦 Тапсырыстар", contact: "📞 Байланыс", lang_btn: "🌐 Тіл", choose_lang: "🌐 Тілді таңдаңыз", changed_lang: "✅ Тіл өзгертілді", no_orders: "📦 Тапсырыс жоқ." };
+T.tr = { ...T.en, open_shop: "🛍 Mağazayı aç", my_orders: "📦 Siparişlerim", contact: "📞 İletişim", lang_btn: "🌐 Dil", choose_lang: "🌐 Dil seçin", changed_lang: "✅ Dil değişti", no_orders: "📦 Sipariş yok." };
+T.tg = { ...T.ru, open_shop: "🛍 Мағозаро кушо", my_orders: "📦 Фармоишҳо", contact: "📞 Тамос", lang_btn: "🌐 Забон", choose_lang: "🌐 Забонро интихоб кунед", changed_lang: "✅ Забон иваз шуд", no_orders: "📦 Фармоиш нест." };
 
 const STATUS_LABEL = {
   uz: { new: "🆕 Yangi", paid: "💳 To'landi", packing: "📦 Qadoqlanmoqda", shipping: "🚚 Yo'lda", delivered: "✅ Yetkazildi", cancelled: "❌ Bekor qilindi" },
@@ -112,7 +87,6 @@ const getBot = () => bot;
 /* --------------------------- Keyboards --------------------------- */
 function langKeyboard() {
   return {
-    parse_mode: "HTML",
     reply_markup: {
       inline_keyboard: [
         [{ text: LANG_NAMES.uz, callback_data: "lang:uz" }, { text: LANG_NAMES.ru, callback_data: "lang:ru" }],
@@ -123,70 +97,14 @@ function langKeyboard() {
   };
 }
 
-function phoneKeyboard(lang) {
-  return {
-    parse_mode: "HTML",
-    reply_markup: {
-      keyboard: [[{ text: tr(lang, "share_phone"), request_contact: true }]],
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    },
-  };
-}
-
-function subKeyboard(lang) {
-  const url = `https://t.me/${config.channelUsername}`;
-  return {
-    parse_mode: "HTML",
-    disable_web_page_preview: true,
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: tr(lang, "open_channel"), url }],
-        [{ text: tr(lang, "check_sub"), callback_data: "sub:check" }],
-      ],
-    },
-  };
-}
-
-function mainKeyboard(lang, userId) {
+function mainKeyboard(lang) {
   const rows = [];
   if (config.publicUrl.startsWith("https://")) {
     rows.push([{ text: tr(lang, "open_shop"), web_app: { url: `${config.publicUrl}/?lang=${lang}` } }]);
   }
   rows.push([{ text: tr(lang, "my_orders") }, { text: tr(lang, "contact") }]);
   rows.push([{ text: tr(lang, "lang_btn") }]);
-  if (userId && ADMIN_IDS.includes(userId)) rows.push([{ text: ADMIN_BTN }]);
   return { reply_markup: { keyboard: rows, resize_keyboard: true } };
-}
-
-async function isSubscribed(userId) {
-  if (!config.requireSubscription) return true;
-  if (!bot) return true;
-  if (ADMIN_IDS.includes(Number(userId))) return true;
-  try {
-    const m = await bot.getChatMember(config.channelId, userId);
-    return ["creator", "administrator", "member", "restricted"].includes(m?.status);
-  } catch (e) {
-    const desc = String(e?.response?.body?.description || e.message || "");
-    // Kanal topilmasa/konfiguratsiya buzilgan bo'lsa — foydalanuvchini qamab qo'ymaymiz,
-    // lekin adminni xabardor qilamiz. Boshqa barcha xatolarda obuna TALAB qilinadi.
-    const misconfig = /chat not found|CHAT_ID_INVALID|CHANNEL_INVALID|bot is not a member|not enough rights|USER_ID_INVALID/i.test(desc);
-    logger.warn("bot", `getChatMember xato: ${desc}`, { misconfig }, userId);
-    if (misconfig) {
-      notifyAdminsOnce("sub_misconfig", `⚠️ Majburiy obuna ishlamayapti: <code>${esc(desc)}</code>\n\nBotni <b>@${esc(config.channelUsername)}</b> kanalida admin qiling.`);
-      return true;
-    }
-    return false;
-  }
-}
-
-/* Adminlarga bir xil ogohlantirishni takror yubormaymiz */
-const adminNoticeSent = new Map();
-function notifyAdminsOnce(key, text) {
-  const now = Date.now();
-  if ((adminNoticeSent.get(key) || 0) > now - 30 * 60 * 1000) return;
-  adminNoticeSent.set(key, now);
-  for (const id of ADMIN_IDS) safeSend(id, text, { parse_mode: "HTML" }).catch(() => {});
 }
 
 async function sendMain(chatId, lang, firstName) {
@@ -196,36 +114,13 @@ async function sendMain(chatId, lang, firstName) {
   }
   await safeSend(chatId, tr(lang, "welcome", { name: esc(firstName || ""), shop: esc(s.shop_name) }), {
     parse_mode: "HTML",
-    ...mainKeyboard(lang, chatId),
+    ...mainKeyboard(lang),
   });
-}
-
-async function askPhone(chatId, lang) {
-  await safeSend(chatId, tr(lang, "ask_phone"), phoneKeyboard(lang));
-}
-
-async function askSubscription(chatId, lang) {
-  await safeSend(chatId, tr(lang, "sub_required", { channel: `@${config.channelUsername}` }), subKeyboard(lang));
-}
-
-async function fetchAndStorePhoto(userId) {
-  if (!bot) return;
-  try {
-    const photos = await bot.getUserProfilePhotos(userId, { limit: 1 });
-    const photo = photos?.photos?.[0]?.slice(-1)?.[0];
-    if (!photo) return;
-    const file = await bot.getFile(photo.file_id);
-    if (!file?.file_path) return;
-    const url = `https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`;
-    q.setPhotoUrl.run(url, userId);
-    try { q.setPhotoFileId.run(photo.file_id, userId); } catch (e) {}
-  } catch (e) {
-    // ignore — foydalanuvchi maxfiylik sozlamalari
-  }
 }
 
 /**
  * Bitta urinish. Xatoda exception tashlaydi — retry mexanizmi shuni ushlaydi.
+ * 403 (bloklangan) va 400 (chat topilmadi) — qayta urinishga arzimaydi.
  */
 async function sendOnce(chatId, text, opts = {}) {
   if (!bot) throw new Error("Bot ishga tushmagan (BOT_TOKEN yo'q)");
@@ -254,6 +149,10 @@ async function sendOnce(chatId, text, opts = {}) {
   }
 }
 
+/**
+ * Xavfsiz yuborish: darhol 3 marta backoff bilan urinadi,
+ * baribir bo'lmasa doimiy navbatga (retry_queue) qo'yadi.
+ */
 async function safeSend(chatId, text, opts = {}) {
   try {
     return await retryAsync(() => sendOnce(chatId, text, opts), {
@@ -274,29 +173,6 @@ function userLang(tgId) {
   return q.getUser.get(tgId)?.lang || "uz";
 }
 
-/* -------------------- Onboarding oqimi (til → telefon → obuna) -------------------- */
-async function continueOnboarding(chatId, userId, firstName) {
-  const row = q.getUser.get(userId);
-  const lang = row?.lang || "uz";
-
-  if (!row?.lang_set) {
-    await safeSend(chatId, tr("uz", "choose_lang"), langKeyboard());
-    return;
-  }
-  if (config.requirePhone && !row?.phone) {
-    await askPhone(chatId, lang);
-    return;
-  }
-  if (config.requireSubscription) {
-    const ok = await isSubscribed(userId);
-    if (!ok) {
-      await askSubscription(chatId, lang);
-      return;
-    }
-  }
-  await sendMain(chatId, lang, firstName || row?.first_name);
-}
-
 /* ----------------------------- Start ----------------------------- */
 function startBot() {
   if (!config.botToken) {
@@ -304,27 +180,8 @@ function startBot() {
     return null;
   }
 
-  bot = new TelegramBot(config.botToken, config.useWebhook ? {} : { polling: { interval: 900, autoStart: false } });
-
-  // 409 Conflict — boshqa instance getUpdates qilayotgan bo'lsa, navbat bilan qayta ulanamiz
-  let conflictAt = 0;
-  bot.on("polling_error", async (e) => {
-    const msg = e?.message || "";
-    console.error("polling:", msg);
-    if (!/409|Conflict|terminated by other/i.test(msg)) return;
-    const now = Date.now();
-    if (now - conflictAt < 30000) return;
-    conflictAt = now;
-    try {
-      await bot.stopPolling({ cancel: true });
-      await bot.deleteWebHook({ drop_pending_updates: false }).catch(() => {});
-      await new Promise((r) => setTimeout(r, 12000));
-      await bot.startPolling({ restart: true });
-      console.log("♻️ polling qayta ishga tushdi (409 tozalandi)");
-    } catch (err) {
-      console.error("polling restart:", err.message);
-    }
-  });
+  bot = new TelegramBot(config.botToken, config.useWebhook ? {} : { polling: { interval: 800, autoStart: true } });
+  bot.on("polling_error", (e) => console.error("polling:", e.message));
   bot.on("webhook_error", (e) => console.error("webhook:", e.message));
 
   if (config.useWebhook) {
@@ -334,58 +191,60 @@ function startBot() {
       .then(() => console.log("🤖 Bot ready (webhook):", url))
       .catch((e) => console.error("setWebHook:", e.message));
   } else {
-    // Webhook qolib ketgan bo'lsa polling ishlamaydi — avval o'chiramiz
-    bot
-      .deleteWebHook({ drop_pending_updates: true })
-      .catch(() => {})
-      .then(() => bot.startPolling({ restart: true }))
-      .then(() => console.log("🤖 Bot ready (polling, webhook tozalandi)"))
-      .catch((e) => console.error("startPolling:", e.message));
+    console.log("🤖 Bot ready (polling)");
   }
 
-  // Bot username'ni saqlab olamiz — kanal postidagi tugma uchun kerak
-  bot.getMe()
-    .then((me) => { if (me?.username) config.botUsername = config.botUsername || me.username; })
+  bot
+    .setMyCommands([
+      { command: "start", description: "🛍 Do'kon / Магазин / Shop" },
+      { command: "orders", description: "📦 Buyurtmalarim" },
+      { command: "lang", description: "🌐 Til / Язык / Language" },
+      { command: "help", description: "ℹ️ Yordam" },
+    ])
     .catch(() => {});
 
-  setupCommandMenus();
-
-  // Admin panel + mahsulot qo'shish sehrgari
-  try {
-    require("./bot_admin").registerAdmin(bot, { safeSend });
-  } catch (e) {
-    console.error("bot_admin:", e.message);
-  }
-  try {
-    require("./bot_product_wizard").registerProductWizard(bot, { safeSend });
-  } catch (e) {
-    console.error("bot_product_wizard:", e.message);
-  }
-
-  bot.onText(/^\/start(?:\s+(\S+))?/, async (msg, match) => {
+  bot.onText(/^\/start/, async (msg) => {
     const f = msg.from;
-    const payload = (match && match[1]) || "";
     q.upsertUser.run(f.id, f.username || null, f.first_name || null, f.last_name || null);
     const row = q.getUser.get(f.id);
     if (row?.blocked) return safeSend(msg.chat.id, tr(row.lang || "uz", "blocked"));
+    if (!row?.lang || !row.last_seen) {
+      await safeSend(msg.chat.id, tr("uz", "choose_lang"), langKeyboard());
+    } else {
+      await sendMain(msg.chat.id, row.lang, f.first_name);
+    }
     q.markSeen.run(f.id);
-    // Profil suratini fon rejimida yangilaymiz
-    fetchAndStorePhoto(f.id).catch(() => {});
-    await continueOnboarding(msg.chat.id, f.id, f.first_name);
-
-    // Kanaldagi "🛒 Sotib olish" tugmasi: /start p_123
-    const pm = /^p[_-]?(\d+)$/i.exec(payload);
-    if (pm) await sendProductCard(msg.chat.id, Number(pm[1]), f.id);
   });
 
   bot.onText(/^\/lang/, (msg) => safeSend(msg.chat.id, tr(userLang(msg.from.id), "choose_lang"), langKeyboard()));
   bot.onText(/^\/help/, (msg) => safeSend(msg.chat.id, tr(userLang(msg.from.id), "help")));
-  bot.onText(/^\/orders\b/, (msg) => {
-    // Admin uchun /orders — bot_admin.js dagi boshqaruv paneli javob beradi
-    if (ADMIN_IDS.includes(msg.from.id)) return;
-    sendOrders(msg.chat.id, msg.from.id);
-  });
-  bot.onText(/^\/myorders\b/, (msg) => sendOrders(msg.chat.id, msg.from.id));
+  bot.onText(/^\/orders/, (msg) => sendOrders(msg.chat.id, msg.from.id));
+
+  // Botning ichki admin paneli (monitoring, zaxira, navbat, buyurtmalar)
+  try {
+    require("./bot_admin").registerAdmin(bot, { safeSend });
+    for (const id of ADMIN_IDS) {
+      bot
+        .setMyCommands(
+          [
+            { command: "start", description: "🛍 Do'kon" },
+            { command: "admin", description: "👨‍💼 Admin panel" },
+            { command: "monitoring", description: "🩺 Monitoring" },
+            { command: "errors", description: "❌ Oxirgi xatolar" },
+            { command: "queue", description: "🔁 Qayta urinish navbati" },
+            { command: "backup", description: "💾 Zaxira olish" },
+            { command: "backups", description: "🗂 Zaxiralar ro'yxati" },
+            { command: "restore", description: "♻️ Zaxiradan tiklash" },
+            { command: "health", description: "🖥 Server holati" },
+            { command: "orders", description: "📦 Mening buyurtmalarim" },
+          ],
+          { scope: { type: "chat", chat_id: id } }
+        )
+        .catch(() => {});
+    }
+  } catch (e) {
+    logger.error("bot", `Admin panelni yuklab bo'lmadi: ${e.message}`);
+  }
 
   bot.on("callback_query", async (cq) => {
     try {
@@ -394,97 +253,30 @@ function startBot() {
         if (!LANG_NAMES[lang]) return;
         q.upsertUser.run(cq.from.id, cq.from.username || null, cq.from.first_name || null, cq.from.last_name || null);
         q.setLang.run(lang, cq.from.id);
-        q.setLangSet.run(cq.from.id);
         await bot.answerCallbackQuery(cq.id, { text: tr(lang, "changed_lang") }).catch(() => {});
         await bot
           .editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: cq.message.chat.id, message_id: cq.message.message_id })
           .catch(() => {});
-        await continueOnboarding(cq.message.chat.id, cq.from.id, cq.from.first_name);
-        return;
-      }
-      if (cq.data === "sub:check") {
-        const lang = userLang(cq.from.id);
-        const ok = await isSubscribed(cq.from.id);
-        if (ok) {
-          await bot.answerCallbackQuery(cq.id, { text: tr(lang, "sub_ok") }).catch(() => {});
-          await bot
-            .editMessageReplyMarkup({ inline_keyboard: [] }, { chat_id: cq.message.chat.id, message_id: cq.message.message_id })
-            .catch(() => {});
-          await sendMain(cq.message.chat.id, lang, cq.from.first_name);
-        } else {
-          await bot.answerCallbackQuery(cq.id, { text: tr(lang, "sub_fail"), show_alert: true }).catch(() => {});
-        }
-        return;
+        await sendMain(cq.message.chat.id, lang, cq.from.first_name);
       }
     } catch (e) {
       console.error("callback:", e.message);
     }
   });
 
-  // Contact (telefon) qabul qilish
-  bot.on("contact", async (msg) => {
-    const contact = msg.contact;
-    if (!contact || contact.user_id !== msg.from.id) return; // faqat foydalanuvchining o'z raqami
-    q.setPhone.run(contact.phone_number, msg.from.id);
-    const lang = userLang(msg.from.id);
-    await safeSend(msg.chat.id, tr(lang, "phone_saved"));
-    await continueOnboarding(msg.chat.id, msg.from.id, msg.from.first_name);
-  });
-
   bot.on("message", async (msg) => {
-    if (msg.contact) return; // contact handler ishlab bo'ldi
     if (!msg.text || msg.text.startsWith("/")) return;
     const lang = userLang(msg.from.id);
     const s = getSettings();
     if (msg.text === tr(lang, "my_orders")) return sendOrders(msg.chat.id, msg.from.id);
     if (msg.text === tr(lang, "contact")) {
       const username = s.support_username ? `💬 @${String(s.support_username).replace(/^@/, "")}` : "";
-      return safeSend(msg.chat.id, tr(lang, "contact_txt", { phone: esc(s.support_phone), username: esc(username) }), { parse_mode: "HTML" });
+      return safeSend(msg.chat.id, tr(lang, "contact_txt", { phone: esc(s.support_phone), username: esc(username) }));
     }
     if (msg.text === tr(lang, "lang_btn")) return safeSend(msg.chat.id, tr(lang, "choose_lang"), langKeyboard());
   });
 
   return bot;
-}
-
-/* ------------------ Buyruqlar menyusi (/ tugmasi) ------------------ */
-const USER_COMMANDS = [
-  { command: "start", description: "🛍 Do'kon / Магазин / Shop" },
-  { command: "orders", description: "📦 Buyurtmalarim" },
-  { command: "lang", description: "🌐 Til / Язык / Language" },
-  { command: "help", description: "ℹ️ Yordam" },
-];
-
-const ADMIN_COMMANDS = [
-  { command: "admin", description: "🛠 Admin panel" },
-  { command: "qoshish", description: "➕ Mahsulot qo'shish (suratlar bilan)" },
-  { command: "orders", description: "📦 Buyurtmalar boshqaruvi" },
-  { command: "myorders", description: "🛍 Mening buyurtmalarim" },
-  { command: "find", description: "🔎 Buyurtma qidirish: /find matn" },
-  { command: "clearfilter", description: "🧹 Filtrni tozalash" },
-  { command: "report", description: "📊 Kunlik hisobot" },
-  { command: "monitoring", description: "📈 Monitoring" },
-  { command: "errors", description: "⚠️ Xatoliklar" },
-  { command: "queue", description: "🔁 Navbat" },
-  { command: "health", description: "❤️ Tizim holati" },
-  { command: "audit", description: "📜 Audit jurnali" },
-  { command: "rbac", description: "🔐 Rollar" },
-  { command: "backup", description: "💾 Zaxira olish" },
-  { command: "backups", description: "🗂 Zaxiralar ro'yxati" },
-  { command: "restore", description: "♻️ Zaxiradan tiklash" },
-  { command: "logzip", description: "📦 Loglarni yuklab olish" },
-  { command: "lang", description: "🌐 Til" },
-];
-
-function setupCommandMenus() {
-  if (!bot) return;
-  bot.setMyCommands(USER_COMMANDS, { scope: { type: "default" } }).catch(() => {});
-  // Har bir admin uchun shaxsiy chatda to'liq buyruqlar menyusi
-  for (const id of ADMIN_IDS) {
-    bot
-      .setMyCommands(ADMIN_COMMANDS, { scope: { type: "chat", chat_id: id } })
-      .catch((e) => logger.warn("bot", `Admin menyusi o'rnatilmadi (${id}): ${e.message}`));
-  }
 }
 
 async function sendOrders(chatId, userId) {
@@ -554,110 +346,6 @@ async function notifyOrderStatus(order, comment) {
   );
 }
 
-/* ----------------- Deep-link: mahsulot kartochkasi ----------------- */
-async function sendProductCard(chatId, productId, userId) {
-  if (!bot) return;
-  const p = q.getProd.get(productId);
-  const lang = userLang(userId || chatId);
-  if (!p || !p.active) return safeSend(chatId, "❌ Mahsulot topilmadi yoki sotuvda emas.");
-  const s = getSettings();
-  const cur = esc(p.currency || s.currency);
-  const name = p[`name_${lang}`] || p.name_uz || "Mahsulot";
-  const desc = p[`desc_${lang}`] || p.desc_uz || "";
-  const priceLine = p.old_price && p.old_price > p.price
-    ? `<s>${money(p.old_price)}</s> <b>${money(p.price)}</b> ${cur}`
-    : `<b>${money(p.price)}</b> ${cur}`;
-  const caption =
-    `🛍 <b>${esc(name)}</b>\n\n` +
-    (desc ? `${esc(desc).slice(0, 600)}\n\n` : "") +
-    `💰 ${priceLine}\n` +
-    (p.brand ? `🏷 ${esc(p.brand)}\n` : "") +
-    (p.sizes ? `📏 ${esc(p.sizes)}\n` : "") +
-    (p.colors ? `🎨 ${esc(p.colors)}\n` : "") +
-    `\n👇 Sotib olish uchun do'konni oching`;
-
-  const kb = config.publicUrl.startsWith("https://")
-    ? { inline_keyboard: [[{ text: "🛒 Sotib olish", web_app: { url: `${config.publicUrl}/?lang=${lang}#/product/${productId}` } }]] }
-    : undefined;
-
-  const imgs = (q.imgsForProd.all(productId) || []).slice(0, 10);
-  const src = (im) => im.file_id || (im.url?.startsWith("http") ? im.url : `${config.publicUrl}${im.url}`);
-  try {
-    if (imgs.length > 1) {
-      await bot.sendMediaGroup(chatId, imgs.map((im, i) => ({
-        type: "photo", media: src(im), ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
-      })));
-      if (kb) await bot.sendMessage(chatId, `👆 <b>${esc(name)}</b>`, { parse_mode: "HTML", reply_markup: kb });
-    } else if (imgs.length === 1) {
-      await bot.sendPhoto(chatId, src(imgs[0]), { caption, parse_mode: "HTML", reply_markup: kb });
-    } else {
-      await safeSend(chatId, caption, { parse_mode: "HTML", reply_markup: kb });
-    }
-  } catch (e) {
-    logger.warn("bot", `Mahsulot kartochkasi yuborilmadi: ${e.message}`, null, productId);
-    await safeSend(chatId, caption, { parse_mode: "HTML", reply_markup: kb });
-  }
-}
-
-/* --------------------------- Kanalga post --------------------------- */
-async function postProductToChannel(productId) {
-  if (!bot || !config.postProductsToChannel) return null;
-  const p = q.getProd.get(productId);
-  if (!p || !p.active) return null;
-  const imgs = (q.imgsForProd.all(productId) || []).slice(0, 10);
-  const s = getSettings();
-  const cur = esc(p.currency || s.currency);
-
-  const name = p.name_uz || p.name_ru || p.name_en || "Mahsulot";
-  const desc = p.desc_uz || p.desc_ru || p.desc_en || "";
-  const priceLine = p.old_price && p.old_price > p.price
-    ? `<s>${money(p.old_price)}</s> <b>${money(p.price)}</b> ${cur}`
-    : `<b>${money(p.price)}</b> ${cur}`;
-  const caption =
-    `🛍 <b>${esc(name)}</b>\n\n` +
-    (desc ? `${esc(desc)}\n\n` : "") +
-    `💰 Narx: ${priceLine}\n` +
-    (p.brand ? `🏷 Brend: <b>${esc(p.brand)}</b>\n` : "") +
-    (p.sizes ? `📏 O'lchamlar: ${esc(p.sizes)}\n` : "") +
-    (p.colors ? `🎨 Ranglar: ${esc(p.colors)}\n` : "") +
-    `\n✅ <i>Ishonchli do'kon · Tez yetkazib berish</i>`;
-
-  const botUser = config.botUsername || "";
-  const buyUrl = botUser ? `https://t.me/${botUser}?start=p_${productId}` : (config.publicUrl || "");
-  const kb = buyUrl
-    ? { inline_keyboard: [[{ text: "🛒 Sotib olish", url: buyUrl }]] }
-    : undefined;
-
-  try {
-    // file_id bo'lsa — Telegram serverdan qayta yuklamaydi (eng barqaror yo'l)
-    const src = (im) => im.file_id || (im.url.startsWith("http") ? im.url : `${config.publicUrl}${im.url}`);
-    const remember = (im, res) => {
-      const fid = res?.photo?.slice(-1)?.[0]?.file_id;
-      if (fid && !im.file_id) { try { q.setImgFileId.run(fid, im.id); } catch (e) {} }
-    };
-    if (imgs.length > 1) {
-      const media = imgs.map((im, i) => ({
-        type: "photo",
-        media: src(im),
-        ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
-      }));
-      const sent = await bot.sendMediaGroup(config.channelId, media);
-      (sent || []).forEach((res, i) => imgs[i] && remember(imgs[i], res));
-      if (kb) {
-        await bot.sendMessage(config.channelId, `👆 <b>${esc(name)}</b>`, { parse_mode: "HTML", reply_markup: kb });
-      }
-    } else if (imgs.length === 1) {
-      const res = await bot.sendPhoto(config.channelId, src(imgs[0]), { caption, parse_mode: "HTML", reply_markup: kb });
-      remember(imgs[0], res);
-    } else {
-      await bot.sendMessage(config.channelId, caption, { parse_mode: "HTML", reply_markup: kb });
-    }
-    logger.info("channel", `Mahsulot kanalga yuborildi: ${productId}`, { channel: config.channelId }, productId);
-  } catch (e) {
-    logger.error("channel", `Kanalga yuborish xato (${productId}): ${e.message}`, { error: e.message }, productId);
-  }
-}
-
 async function broadcast(text) {
   if (!bot) return { sent: 0, total: 0 };
   const ids = q.allUserIds.all().map((r) => r.tg_id);
@@ -665,9 +353,9 @@ async function broadcast(text) {
   for (const chatId of ids) {
     const ok = await safeSend(chatId, text, { parse_mode: "HTML", disable_web_page_preview: true });
     if (ok) sent++;
-    await new Promise((r) => setTimeout(r, 45));
+    await new Promise((r) => setTimeout(r, 45)); // ~22 msg/s — Telegram limiti ichida
   }
   return { sent, total: ids.length, failed: ids.length - sent };
 }
 
-module.exports = { startBot, getBot, notifyNewOrder, notifyOrderStatus, broadcast, safeSend, sendOnce, postProductToChannel };
+module.exports = { startBot, getBot, notifyNewOrder, notifyOrderStatus, broadcast, safeSend, sendOnce };

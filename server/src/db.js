@@ -1,10 +1,16 @@
 const Database = require("better-sqlite3");
 const path = require("path");
+const fs = require("fs");
 const bcrypt = require("bcryptjs");
 
-const DATA_DIR = (process.env.DATA_DIR || "").trim() || path.join(__dirname, "..", "..");
-try { require("fs").mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
-const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "shop.db");
+function defaultDbFile() {
+  // Railway volume /data ga mount qilingan bo'lsa — bazani o'sha yerda saqlaymiz
+  for (const dir of ["/data", "/var/lib/shop"]) {
+    try { if (fs.existsSync(dir) && fs.statSync(dir).isDirectory()) return path.join(dir, "shop.db"); } catch {}
+  }
+  return path.join(__dirname, "..", "..", "shop.db");
+}
+const DB_FILE = process.env.DB_FILE || defaultDbFile();
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
@@ -156,10 +162,6 @@ addColumn("orders", "currency", "TEXT");
 addColumn("orders", "paid", "INTEGER DEFAULT 0");
 addColumn("orders", "receipt", "TEXT");
 addColumn("users", "last_seen", "INTEGER");
-addColumn("users", "lang_set", "INTEGER DEFAULT 0");
-addColumn("users", "photo_url", "TEXT");
-addColumn("users", "photo_file_id", "TEXT");
-addColumn("product_images", "file_id", "TEXT");
 addColumn("products", "sold", "INTEGER DEFAULT 0");
 addColumn("countries", "free_from", "INTEGER DEFAULT 0");
 addColumn("promo_codes", "min_total", "INTEGER DEFAULT 0");
@@ -197,7 +199,7 @@ seed();
 const DEFAULT_SETTINGS = {
   shop_name: process.env.SHOP_NAME || "Shop",
   currency: process.env.CURRENCY || "UZS",
-  support_phone: process.env.SUPPORT_PHONE || "+998 95 390 94 77",
+  support_phone: "+998 90 000 00 00",
   support_username: "",
   about: "",
   free_shipping_from: "0",
@@ -212,9 +214,6 @@ const DEFAULT_SETTINGS = {
 function ensureSettings() {
   const ins = db.prepare("INSERT OR IGNORE INTO settings (key,value) VALUES (?,?)");
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) ins.run(k, String(v));
-  // Eski placeholder raqamni haqiqiy qo'llab-quvvatlash raqamiga almashtiramiz
-  db.prepare("UPDATE settings SET value=? WHERE key='support_phone' AND (value='' OR value='+998 90 000 00 00')")
-    .run(DEFAULT_SETTINGS.support_phone);
 }
 
 function getSettings() {
@@ -283,8 +282,6 @@ const q = {
 
   // Product images
   addImg: db.prepare("INSERT INTO product_images (product_id, url, sort) VALUES (?,?,?)"),
-  addImgFull: db.prepare("INSERT INTO product_images (product_id, url, sort, file_id) VALUES (?,?,?,?)"),
-  setImgFileId: db.prepare("UPDATE product_images SET file_id=? WHERE id=?"),
   delImgsForProd: db.prepare("DELETE FROM product_images WHERE product_id=?"),
   imgsForProd: db.prepare("SELECT * FROM product_images WHERE product_id=? ORDER BY sort, id"),
 
@@ -361,13 +358,6 @@ const q = {
 
   // Aliases (eski nomlar bilan moslik)
   countProducts: db.prepare("SELECT COUNT(*) c FROM products"),
-  setLangSet: db.prepare("UPDATE users SET lang_set = 1 WHERE tg_id = ?"),
-  setPhotoUrl: db.prepare("UPDATE users SET photo_url = ? WHERE tg_id = ?"),
-  setPhotoFileId: db.prepare("UPDATE users SET photo_file_id = ? WHERE tg_id = ?"),
-  countUserOrders: db.prepare("SELECT COUNT(*) c FROM orders WHERE user_id=?"),
-  countUserFavs: db.prepare("SELECT COUNT(*) c FROM favorites WHERE user_id=?"),
-  countUserCart: db.prepare("SELECT COALESCE(SUM(qty),0) c FROM cart_items WHERE user_id=?"),
-  sumUserSpent: db.prepare("SELECT COALESCE(SUM(total),0) s FROM orders WHERE user_id=? AND status != 'cancelled'"),
   markSeen: db.prepare("UPDATE users SET last_seen = strftime('%s','now') WHERE tg_id = ?"),
 };
 

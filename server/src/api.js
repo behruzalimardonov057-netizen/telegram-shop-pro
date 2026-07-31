@@ -32,7 +32,7 @@ const LANGS = ["uz", "ru", "en", "kk", "tr", "tg"];
 const STATUSES = ["new", "paid", "packing", "shipping", "delivered", "cancelled"];
 
 /* ============================ Upload ============================ */
-const UPLOAD_DIR = config.uploadDir;
+const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const ALLOWED_MIME = {
@@ -100,47 +100,7 @@ router.post("/me", tgAuth, (req, res) => {
   const u = req.user;
   q.upsertUser.run(u.id, u.username || null, u.first_name || null, u.last_name || null);
   q.markSeen.run(u.id);
-  const user = q.getUser.get(u.id);
-  // Telegram file-link'lari muddati o'tadi — barqaror proxy manzil beramiz
-  if (user && user.photo_file_id) user.photo_url = `/api/avatar/${u.id}?v=${String(user.photo_file_id).slice(-8)}`;
-  res.json({
-    user,
-    stats: {
-      orders: q.countUserOrders.get(u.id).c,
-      favorites: q.countUserFavs.get(u.id).c,
-      cart: q.countUserCart.get(u.id).c,
-      spent: q.sumUserSpent.get(u.id).s,
-    },
-    is_admin: config.adminIds.includes(Number(u.id)),
-  });
-});
-
-/* Profil surati — Telegram file_id orqali, muddati o'tmaydigan manzil */
-const avatarCache = new Map(); // tg_id -> { url, exp }
-router.get("/avatar/:id", async (req, res) => {
-  const tgId = Number(req.params.id);
-  if (!tgId) return res.status(400).end();
-  const row = q.getUser.get(tgId);
-  if (!row?.photo_file_id) return res.status(404).end();
-  try {
-    const now = Date.now();
-    let hit = avatarCache.get(tgId);
-    if (!hit || hit.exp < now || hit.fid !== row.photo_file_id) {
-      const bot = require("./bot").getBot?.();
-      if (!bot) return res.status(404).end();
-      const link = await bot.getFileLink(row.photo_file_id);
-      hit = { url: link, fid: row.photo_file_id, exp: now + 30 * 60 * 1000 };
-      avatarCache.set(tgId, hit);
-    }
-    const up = await fetch(hit.url);
-    if (!up.ok) { avatarCache.delete(tgId); return res.status(404).end(); }
-    const buf = Buffer.from(await up.arrayBuffer());
-    res.setHeader("Content-Type", up.headers.get("content-type") || "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    res.end(buf);
-  } catch (e) {
-    res.status(404).end();
-  }
+  res.json({ user: q.getUser.get(u.id) });
 });
 
 router.post("/set-lang", tgAuth, validate(z.object({ lang: z.enum(LANGS) })), (req, res) => {
@@ -176,7 +136,6 @@ router.get("/config", (req, res) => {
     payment_methods: methods,
     card_number: s.card_number,
     card_holder: s.card_holder,
-    channel_username: config.channelUsername,
   });
 });
 
@@ -545,11 +504,6 @@ router.post("/admin/products", adminAuth, validate(productSchema), (req, res) =>
     p.images.forEach((url, i) => q.addImg.run(newId, url, i));
     return newId;
   })();
-  // Kanalga fon rejimida yuboramiz
-  try {
-    const { postProductToChannel } = require("./bot");
-    setImmediate(() => { postProductToChannel(pid).catch(() => {}); });
-  } catch (e) {}
   res.json({ id: pid });
 });
 

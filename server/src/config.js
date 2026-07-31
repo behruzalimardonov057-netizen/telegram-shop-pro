@@ -8,28 +8,15 @@ function bool(v, def = false) {
 
 const isProd = (process.env.NODE_ENV || "production") === "production";
 
-// PUBLIC_URL berilmagan bo'lsa Railway avtomatik bergan domendan foydalanamiz.
-// Aks holda Mini App tugmasi noto'g'ri manzilga ishora qiladi va 404 chiqadi.
-function resolvePublicUrl() {
-  const explicit = (process.env.PUBLIC_URL || "").trim();
-  const railway =
-    (process.env.RAILWAY_PUBLIC_DOMAIN || "").trim() ||
-    (process.env.RAILWAY_STATIC_URL || "").trim();
-  let url = explicit || (railway ? (railway.startsWith("http") ? railway : `https://${railway}`) : "");
-  url = url.replace(/\/+$/, "");
-  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
-  return url;
-}
-
-const DATA_DIR = (process.env.DATA_DIR || "").trim() || require("path").join(__dirname, "..", "..");
-
 const config = {
   isProd,
-  dataDir: DATA_DIR,
-  uploadDir: (process.env.UPLOAD_DIR || "").trim() || require("path").join(DATA_DIR, "uploads"),
   port: Number(process.env.PORT) || 3000,
   botToken: (process.env.BOT_TOKEN || "").trim(),
-  publicUrl: resolvePublicUrl(),
+  publicUrl: (
+    process.env.PUBLIC_URL ||
+    // Railway avtomatik domeni (PUBLIC_URL berilmasa)
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? "https://" + process.env.RAILWAY_PUBLIC_DOMAIN : "")
+  ).trim().replace(/\/+$/, ""),
   adminIds: (process.env.ADMIN_TG_IDS || "")
     .split(",")
     .map((s) => Number(s.trim()))
@@ -41,18 +28,11 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || "",
   shopName: process.env.SHOP_NAME || "Shop",
   currency: process.env.CURRENCY || "UZS",
-  useWebhook: bool(process.env.USE_WEBHOOK, false),
+  useWebhook: bool(process.env.USE_WEBHOOK, Boolean(process.env.RAILWAY_PUBLIC_DOMAIN)),
   allowDevAuth: bool(process.env.ALLOW_DEV_AUTH, false),
   initDataMaxAgeSec: Number(process.env.INITDATA_MAX_AGE) || 24 * 60 * 60,
   trustProxy: bool(process.env.TRUST_PROXY, true),
-  // --- Kanal, majburiy obuna, telefon ---
-  channelUsername: (process.env.CHANNEL_USERNAME || "shop_kanali").trim().replace(/^@/, ""),
-  botUsername: (process.env.BOT_USERNAME || "").trim().replace(/^@/, ""),
-  requireSubscription: bool(process.env.REQUIRE_SUBSCRIPTION, true),
-  requirePhone: bool(process.env.REQUIRE_PHONE, true),
-  postProductsToChannel: bool(process.env.POST_PRODUCTS_TO_CHANNEL, true),
 };
-config.channelId = (process.env.CHANNEL_ID || `@${config.channelUsername}`).trim();
 
 // Webhook uchun maxfiy yo'l (token'dan deterministik hosil qilinadi)
 config.webhookPath =
