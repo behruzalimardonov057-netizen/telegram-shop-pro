@@ -95,6 +95,10 @@ function menuScreen() {
         { text: "🛡 Rollar (RBAC)", callback_data: "adm:rbac" },
         { text: "📊 Kunlik hisobot", callback_data: "adm:rpt" },
       ],
+      [
+        { text: "🧹 Filtrni tozalash", callback_data: "adm:clearfilter" },
+        { text: "💾 Zaxira olish", callback_data: "adm:backupnow" },
+      ],
       [{ text: "🔄 Yangilash", callback_data: "adm:menu" }],
     ],
   };
@@ -484,6 +488,13 @@ function registerAdmin(bot, { safeSend }) {
     return true;
   };
 
+  // Reply-klaviaturadagi "🛠 Admin panel" tugmasi
+  bot.onText(/^🛠 Admin panel$/, async (msg) => {
+    if (!guard(msg)) return;
+    botAudit(msg.from, "menu.open");
+    await show(msg.chat.id, menuScreen());
+  });
+
   bot.onText(/^\/admin\b/, async (msg) => {
     if (!guard(msg)) return;
     botAudit(msg.from, "menu.open");
@@ -624,6 +635,22 @@ function registerAdmin(bot, { safeSend }) {
           break;
         case "menu":
           await show(chatId, menuScreen(), mid); break;
+        case "clearfilter":
+          orderFilters.set(cq.from.id, { status: "all", days: 0, search: "", page: 1 });
+          botAudit(cq.from, "orders.filter.clear");
+          await bot.answerCallbackQuery(cq.id, { text: "Filtr tozalandi" }).catch(() => {});
+          await show(chatId, ordersScreen(cq.from.id), mid); break;
+        case "backupnow": {
+          await bot.answerCallbackQuery(cq.id, { text: "Zaxira olinmoqda…" }).catch(() => {});
+          try {
+            const b = await backup.createBackup("manual", `tg:${cq.from.id}`);
+            botAudit(cq.from, "backup.create", b.name, { size: b.size });
+            await sendBackupFile(bot, chatId, b.name, `✅ Zaxira tayyor: <code>${esc(b.name)}</code> (${kb(b.size)})`);
+          } catch (e) {
+            await safeSend(chatId, `❌ Xato: ${esc(e.message)}`);
+          }
+          break;
+        }
         case "mon":
           await show(chatId, monScreen(), mid); break;
         case "errors":
