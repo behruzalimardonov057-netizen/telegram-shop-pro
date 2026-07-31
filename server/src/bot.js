@@ -6,6 +6,7 @@ const { logger } = require("./logger");
 const { enqueue, retryAsync } = require("./retry");
 
 const ADMIN_IDS = config.adminIds;
+const ADMIN_BTN = "🛠 Admin panel";
 
 /* ----------------------------- i18n ----------------------------- */
 const T = {
@@ -147,13 +148,14 @@ function subKeyboard(lang) {
   };
 }
 
-function mainKeyboard(lang) {
+function mainKeyboard(lang, userId) {
   const rows = [];
   if (config.publicUrl.startsWith("https://")) {
     rows.push([{ text: tr(lang, "open_shop"), web_app: { url: `${config.publicUrl}/?lang=${lang}` } }]);
   }
   rows.push([{ text: tr(lang, "my_orders") }, { text: tr(lang, "contact") }]);
   rows.push([{ text: tr(lang, "lang_btn") }]);
+  if (userId && ADMIN_IDS.includes(userId)) rows.push([{ text: ADMIN_BTN }]);
   return { reply_markup: { keyboard: rows, resize_keyboard: true } };
 }
 
@@ -177,7 +179,7 @@ async function sendMain(chatId, lang, firstName) {
   }
   await safeSend(chatId, tr(lang, "welcome", { name: esc(firstName || ""), shop: esc(s.shop_name) }), {
     parse_mode: "HTML",
-    ...mainKeyboard(lang),
+    ...mainKeyboard(lang, chatId),
   });
 }
 
