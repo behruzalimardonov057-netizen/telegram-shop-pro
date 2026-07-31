@@ -305,6 +305,18 @@ function startBot() {
 
   setupCommandMenus();
 
+  // Admin panel + mahsulot qo'shish sehrgari
+  try {
+    require("./bot_admin").registerAdmin(bot, { safeSend });
+  } catch (e) {
+    console.error("bot_admin:", e.message);
+  }
+  try {
+    require("./bot_product_wizard").registerProductWizard(bot, { safeSend });
+  } catch (e) {
+    console.error("bot_product_wizard:", e.message);
+  }
+
   bot.onText(/^\/start(?:\s+(\S+))?/, async (msg) => {
     const f = msg.from;
     q.upsertUser.run(f.id, f.username || null, f.first_name || null, f.last_name || null);
@@ -395,6 +407,7 @@ const USER_COMMANDS = [
 
 const ADMIN_COMMANDS = [
   { command: "admin", description: "🛠 Admin panel" },
+  { command: "qoshish", description: "➕ Mahsulot qo'shish (suratlar bilan)" },
   { command: "orders", description: "📦 Buyurtmalar boshqaruvi" },
   { command: "myorders", description: "🛍 Mening buyurtmalarim" },
   { command: "find", description: "🔎 Buyurtma qidirish: /find matn" },

@@ -74,6 +74,7 @@ function menuScreen() {
       `🔁 Navbatda: <b>${st.pending}</b> · o'lik: <b>${st.dead}</b>\n\n` +
       `🌐 Veb-panel: ${esc(config.publicUrl || "-")}/admin`,
     keyboard: [
+      [{ text: "➕ Mahsulot qo'shish (suratlar bilan)", callback_data: "pw:new" }],
       [
         { text: "📦 Buyurtmalar", callback_data: "adm:orders" },
         { text: "🩺 Monitoring", callback_data: "adm:mon" },
