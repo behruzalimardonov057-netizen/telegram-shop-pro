@@ -450,7 +450,7 @@ function CartPage({ lang, go, cart, refreshCart, config }) {
     </div>`;
 }
 
-function CheckoutPage({ lang, go, refreshCart, cart, config }) {
+function CheckoutPage({ lang, go, refreshCart, cart, config, user }) {
   const t = T[lang];
   const cur = config?.currency || "";
   const [countries, setCountries] = useState([]);
@@ -475,6 +475,17 @@ function CheckoutPage({ lang, go, refreshCart, cart, config }) {
   }, [form.country_id, promoInfo, cart.items]);
 
   useEffect(() => { if (!methods.includes(form.payment)) setForm((f) => ({ ...f, payment: methods[0] })); }, [config]);
+
+  // Profildagi telefon/ism — avtomatik to'ldiramiz (qulay xarid)
+  useEffect(() => {
+    if (!user) return;
+    setForm((f) => ({
+      ...f,
+      phone: f.phone || user.phone || "",
+      name: f.name || [user.first_name, user.last_name].filter(Boolean).join(" "),
+      country_id: f.country_id || (user.country_id ? String(user.country_id) : f.country_id),
+    }));
+  }, [user]);
 
   const applyPromo = async () => {
     if (!form.promo.trim()) return;
@@ -545,7 +556,15 @@ function CheckoutPage({ lang, go, refreshCart, cart, config }) {
           ${totals.discount > 0 && html`<div class="row text-green-600"><span>${t.discount}</span><span>−${fmt(totals.discount)} ${cur}</span></div>`}
           <div class="row total"><span>${t.total}</span><span>${fmt(totals.total)} ${cur}</span></div>
         </div>
-        <button onClick=${submit} disabled=${sending || !cart.items.length} class="btn-primary w-full py-4">${sending ? "..." : t.checkout}</button>
+      </div>
+      <div class="pay-bar">
+        <div class="min-w-0">
+          <div class="text-[11px] opacity-60">${t.total}</div>
+          <div class="text-[17px] font-extrabold truncate">${fmt(totals.total)} ${cur}</div>
+        </div>
+        <button onClick=${submit} disabled=${sending || !cart.items.length} class="btn-primary px-6 py-3.5 flex-1">
+          ${sending ? "⏳ ..." : "✅ " + t.checkout}
+        </button>
       </div>
     </div>`;
 }
@@ -678,36 +697,83 @@ function applyTheme(v){
   if (m) m.setAttribute("content", th.bar);
 }
 
-function ProfilePage({ lang, setLang, go, user, config }) {
+function ProfilePage({ lang, setLang, go, user, config, stats, isAdmin, cartCount }) {
   const t = T[lang];
   const [theme, setTheme] = useState(getTheme());
   const tgU = tg?.initDataUnsafe?.user || {};
   const photo = user?.photo_url || tgU.photo_url;
-  const fullName = [user?.first_name || tgU.first_name, user?.last_name || tgU.last_name].filter(Boolean).join(" ") || "—";
+  const fullName = [user?.first_name || tgU.first_name, user?.last_name || tgU.last_name].filter(Boolean).join(" ") || "Mehmon";
   const uname = user?.username || tgU.username;
-  const uid = user?.tg_id || user?.id || tgU.id;
+  const uid = user?.tg_id || tgU.id;
   const support = config?.support_username ? `https://t.me/${String(config.support_username).replace(/^@/, "")}` : null;
+  const channel = config?.channel_username ? `https://t.me/${String(config.channel_username).replace(/^@/, "")}` : null;
   const initial = (fullName || "?")[0];
+  const cur = config?.currency || "";
+  const st = stats || {};
+  const copyId = () => {
+    haptic();
+    try { navigator.clipboard.writeText(String(uid || "")); toast("🆔 ID nusxalandi", "ok"); } catch (e) {}
+  };
+
   return html`
-    <div class="pb-24">
-      <${TopBar} title=${t.profile}/>
-      <div class="p-4 space-y-3">
-        <div class="card-box pop" style="background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff">
-          <div class="flex items-center gap-3">
+    <div class="pb-28">
+      <div class="prof-hero">
+        <div class="prof-hero-bg"></div>
+        <div class="prof-hero-in">
+          <div class="flex items-center gap-3.5 min-w-0">
             ${photo
-              ? html`<img src=${photo} alt="" class="float" style="width:64px;height:64px;border-radius:9999px;object-fit:cover;border:2px solid rgba(255,255,255,.6)"/>`
-              : html`<div class="avatar float" style="width:64px;height:64px;background:rgba(255,255,255,.22);color:#fff">${initial}</div>`}
-            <div class="min-w-0">
-              <div class="font-bold text-[17px] truncate">${fullName}</div>
+              ? html`<img src=${photo} alt="" class="prof-ava"/>`
+              : html`<div class="prof-ava prof-ava-txt">${initial}</div>`}
+            <div class="min-w-0 flex-1">
+              <div class="text-[19px] font-extrabold leading-tight truncate">${fullName}</div>
               <div class="text-[13px] opacity-90 truncate">${uname ? "@" + uname : (user?.phone || "Telegram foydalanuvchi")}</div>
-              ${uid ? html`<div class="text-[11px] opacity-75">🆔 ${uid}</div>` : null}
+              <div class="flex items-center gap-1.5 mt-1.5">
+                ${uid ? html`<button onClick=${copyId} class="prof-pill press">🆔 ${uid}</button>` : null}
+                ${user?.phone ? html`<span class="prof-pill">📱 ${user.phone}</span>` : null}
+              </div>
             </div>
           </div>
-          ${user?.phone ? html`<div class="text-[12px] opacity-90 mt-2">📱 ${user.phone}</div>` : null}
+
+          <div class="prof-stats">
+            <button onClick=${() => go("/orders")} class="prof-stat press">
+              <b>${st.orders ?? 0}</b><span>${t.my_orders || "Buyurtma"}</span>
+            </button>
+            <button onClick=${() => go("/favorites")} class="prof-stat press">
+              <b>${st.favorites ?? 0}</b><span>${t.favorites || "Sevimli"}</span>
+            </button>
+            <button onClick=${() => go("/cart")} class="prof-stat press">
+              <b>${cartCount ?? st.cart ?? 0}</b><span>${t.cart || "Savat"}</span>
+            </button>
+          </div>
+          ${st.spent > 0 && html`<div class="prof-spent">💎 Jami xaridlar: <b>${fmt(st.spent)} ${cur}</b></div>`}
+        </div>
+      </div>
+
+      <div class="px-4 -mt-5 space-y-3 relative">
+        <div class="card-box pop">
+          <div class="grid grid-cols-4 gap-2">
+            <button onClick=${() => { haptic(); go("/catalog"); }} class="qa press"><i>🛍</i><span>${t.catalog || "Katalog"}</span></button>
+            <button onClick=${() => { haptic(); go("/favorites"); }} class="qa press"><i>❤️</i><span>${t.favorites || "Sevimli"}</span></button>
+            <button onClick=${() => { haptic(); go("/cart"); }} class="qa press">
+              <i>🛒${cartCount ? html`<b class="qa-badge">${cartCount}</b>` : null}</i><span>${t.cart || "Savat"}</span>
+            </button>
+            <button onClick=${() => { haptic(); go("/orders"); }} class="qa press"><i>📦</i><span>${t.my_orders || "Buyurtma"}</span></button>
+          </div>
         </div>
 
+        ${isAdmin && html`
+          <a href="/admin" target="_blank" class="menu-row press" style="background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff">
+            <span>👨‍💼 Admin panel</span><span class="opacity-80">›</span>
+          </a>`}
+
+        <div class="sect-title">⚙️ ${t.settings || "Sozlamalar"}</div>
         <div class="card-box">
-          <div class="text-xs opacity-60 mb-3">🎨 Do'kon rangi / Тема / Theme</div>
+          <div class="text-xs opacity-60 mb-2.5">🌐 ${t.change_lang}</div>
+          <div class="grid grid-cols-2 gap-2">
+            ${Object.entries(LANG_NAMES).map(([k, v]) => html`
+              <button key=${k} onClick=${() => { haptic(); setLang(k); }} class=${lang === k ? "opt opt-on press" : "opt press"}>${v}</button>`)}
+          </div>
+          <div class="text-xs opacity-60 mt-4 mb-2.5">🎨 Mavzu / Тема</div>
           <div class="grid grid-cols-4 gap-2">
             ${THEMES.map((th) => html`
               <button key=${th.key} onClick=${() => { haptic(); applyTheme(th.key); setTheme(th.key); }}
@@ -718,21 +784,15 @@ function ProfilePage({ lang, setLang, go, user, config }) {
           </div>
         </div>
 
-        <button onClick=${() => go("/orders")} class="menu-row press">📦 ${t.my_orders} <span class="opacity-40">›</span></button>
-        <button onClick=${() => go("/favorites")} class="menu-row press">❤️ ${t.favorites} <span class="opacity-40">›</span></button>
-        ${support && html`<a href=${support} target="_blank" class="menu-row press">💬 ${t.support || "Yordam"} <span class="opacity-40">›</span></a>`}
-        ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="menu-row press">📞 ${config.support_phone} <span class="opacity-40">›</span></a>`}
-        ${config?.channel_username && html`<a href=${"https://t.me/" + String(config.channel_username).replace(/^@/, "")} target="_blank" class="menu-row press">📢 Rasmiy kanal <span class="opacity-40">›</span></a>`}
-
-        <div class="card-box">
-          <div class="text-xs opacity-60 mb-2">🌐 ${t.change_lang}</div>
-          <div class="grid grid-cols-2 gap-2">
-            ${Object.entries(LANG_NAMES).map(([k, v]) => html`
-              <button key=${k} onClick=${() => { haptic(); setLang(k); }} class=${lang === k ? "opt opt-on press" : "opt press"}>${v}</button>`)}
-          </div>
+        <div class="sect-title">☎️ ${t.contact || "Aloqa"}</div>
+        <div class="card-box p-0 overflow-hidden">
+          ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="row-link press"><span>📞 ${config.support_phone}</span><span class="opacity-40">›</span></a>`}
+          ${support && html`<a href=${support} target="_blank" class="row-link press"><span>💬 ${t.support || "Yordam"} — @${String(config.support_username).replace(/^@/, "")}</span><span class="opacity-40">›</span></a>`}
+          ${channel && html`<a href=${channel} target="_blank" class="row-link press"><span>📢 Rasmiy kanal</span><span class="opacity-40">›</span></a>`}
         </div>
-        ${config?.about && html`<div class="card-box text-[13px] opacity-75 whitespace-pre-line">${config.about}</div>`}
-        <div class="text-center text-[11px] opacity-35 pt-2">${config?.shop_name || "Baraka Shop"} · v2.1</div>
+
+        ${config?.about && html`<div class="card-box text-[13px] opacity-75 whitespace-pre-line leading-relaxed">${config.about}</div>`}
+        <div class="text-center text-[11px] opacity-35 pt-1">${config?.shop_name || "Shop"} · v2.2 · 🔒 Ishonchli to'lov</div>
       </div>
     </div>`;
 }
@@ -742,6 +802,8 @@ function App() {
   const [lang, setLangState] = useState(getLang());
   const [route, go] = useRoute();
   const [user, setUser] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [config, setConfig] = useState(null);
   const [home, setHome] = useState(null);
   const [cart, setCart] = useState({ items: [] });
@@ -794,7 +856,12 @@ function App() {
 
   useEffect(() => {
     api("/config").then(setConfig).catch(() => {});
-    api("/me", { method: "POST" }).then((r) => { setUser(r.user); if (r.user?.lang) setLangState(r.user.lang); }).catch(() => {});
+    api("/me", { method: "POST" }).then((r) => {
+      setUser(r.user);
+      setStats(r.stats || null);
+      setIsAdmin(!!r.is_admin);
+      if (r.user?.lang) setLangState(r.user.lang);
+    }).catch(() => {});
     api("/home").then(setHome).catch((e) => toast(e.message, "err"));
     refreshCart();
     refreshFavs();
@@ -820,8 +887,8 @@ function App() {
   else if (path === "/catalog") page = html`<${CatalogPage} lang=${lang} go=${go} params=${params} config=${config}/>`;
   else if (path.startsWith("/product/")) page = html`<${ProductPage} lang=${lang} go=${go} id=${path.split("/")[2]} refreshCart=${refreshCart} config=${config} favIds=${favIds} toggleFav=${toggleFav}/>`;
   else if (path === "/cart") page = html`<${CartPage} lang=${lang} go=${go} refreshCart=${refreshCart} cart=${cart} config=${config}/>`;
-  else if (path === "/checkout") page = html`<${CheckoutPage} lang=${lang} go=${go} refreshCart=${refreshCart} cart=${cart} config=${config}/>`;
-  else if (path === "/profile") page = html`<${ProfilePage} lang=${lang} setLang=${setLang} go=${go} user=${user} config=${config}/>`;
+  else if (path === "/checkout") page = html`<${CheckoutPage} lang=${lang} go=${go} refreshCart=${refreshCart} cart=${cart} config=${config} user=${user}/>`;
+  else if (path === "/profile") page = html`<${ProfilePage} lang=${lang} setLang=${setLang} go=${go} user=${user} config=${config} stats=${stats} isAdmin=${isAdmin} cartCount=${cartCount}/>`;
   else if (path.startsWith("/orders/")) page = html`<${OrderPage} lang=${lang} id=${path.split("/")[2]} go=${go}/>`;
   else if (path === "/orders") page = html`<${OrdersPage} lang=${lang} go=${go}/>`;
   else if (path === "/favorites") page = html`<${FavoritesPage} lang=${lang} go=${go} config=${config}/>`;

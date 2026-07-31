@@ -11,7 +11,7 @@ const { db, q, getSettings } = require("./db");
 const { logger } = require("./logger");
 const { botAudit } = require("./audit");
 
-const UPLOAD_DIR = path.join(__dirname, "..", "..", "uploads");
+const UPLOAD_DIR = config.uploadDir;
 const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const money = (n) => Number(n || 0).toLocaleString("ru-RU");
 const isAdmin = (id) => config.adminIds.includes(Number(id));
@@ -149,7 +149,7 @@ function registerProductWizard(bot, { safeSend }) {
     const buf = Buffer.from(await res.arrayBuffer());
     const name = `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
     fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
-    return `/uploads/${name}`;
+    return { url: `/uploads/${name}`, file_id: fileId };
   }
 
   /* ---------------- Suratlar ---------------- */
@@ -163,8 +163,8 @@ function registerProductWizard(bot, { safeSend }) {
     }
     const best = msg.photo[msg.photo.length - 1];
     try {
-      const url = await saveTelegramPhoto(best.file_id);
-      d.images.push(url);
+      const saved = await saveTelegramPhoto(best.file_id);
+      d.images.push(saved);
       await send(msg.chat.id, `📸 Qabul qilindi — <b>${d.images.length}/10</b>. Yana yuboring yoki tugmani bosing.`, photosKb(d.images.length));
     } catch (e) {
       logger.error("bot", `Surat saqlanmadi: ${e.message}`);
@@ -283,7 +283,11 @@ function saveProduct(d) {
   return db.transaction(() => {
     const info = q.addProd.run(...args);
     const id = Number(info.lastInsertRowid);
-    d.images.forEach((url, i) => q.addImg.run(id, url, i));
+    d.images.forEach((im, i) => {
+      const url = typeof im === "string" ? im : im.url;
+      const fid = typeof im === "string" ? null : im.file_id || null;
+      q.addImgFull.run(id, url, i, fid);
+    });
     return id;
   })();
 }

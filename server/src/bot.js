@@ -162,14 +162,31 @@ function mainKeyboard(lang, userId) {
 async function isSubscribed(userId) {
   if (!config.requireSubscription) return true;
   if (!bot) return true;
+  if (ADMIN_IDS.includes(Number(userId))) return true;
   try {
     const m = await bot.getChatMember(config.channelId, userId);
     return ["creator", "administrator", "member", "restricted"].includes(m?.status);
   } catch (e) {
-    // Kanal ochiq bo'lmasa yoki bot admin bo'lmasa — talab qilmaymiz
-    logger.warn("bot", `getChatMember xato: ${e.message}`, null, userId);
-    return true;
+    const desc = String(e?.response?.body?.description || e.message || "");
+    // Kanal topilmasa/konfiguratsiya buzilgan bo'lsa — foydalanuvchini qamab qo'ymaymiz,
+    // lekin adminni xabardor qilamiz. Boshqa barcha xatolarda obuna TALAB qilinadi.
+    const misconfig = /chat not found|CHAT_ID_INVALID|CHANNEL_INVALID|bot is not a member|not enough rights|USER_ID_INVALID/i.test(desc);
+    logger.warn("bot", `getChatMember xato: ${desc}`, { misconfig }, userId);
+    if (misconfig) {
+      notifyAdminsOnce("sub_misconfig", `⚠️ Majburiy obuna ishlamayapti: <code>${esc(desc)}</code>\n\nBotni <b>@${esc(config.channelUsername)}</b> kanalida admin qiling.`);
+      return true;
+    }
+    return false;
   }
+}
+
+/* Adminlarga bir xil ogohlantirishni takror yubormaymiz */
+const adminNoticeSent = new Map();
+function notifyAdminsOnce(key, text) {
+  const now = Date.now();
+  if ((adminNoticeSent.get(key) || 0) > now - 30 * 60 * 1000) return;
+  adminNoticeSent.set(key, now);
+  for (const id of ADMIN_IDS) safeSend(id, text, { parse_mode: "HTML" }).catch(() => {});
 }
 
 async function sendMain(chatId, lang, firstName) {
@@ -201,6 +218,7 @@ async function fetchAndStorePhoto(userId) {
     if (!file?.file_path) return;
     const url = `https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`;
     q.setPhotoUrl.run(url, userId);
+    try { q.setPhotoFileId.run(photo.file_id, userId); } catch (e) {}
   } catch (e) {
     // ignore — foydalanuvchi maxfiylik sozlamalari
   }
@@ -286,8 +304,27 @@ function startBot() {
     return null;
   }
 
-  bot = new TelegramBot(config.botToken, config.useWebhook ? {} : { polling: { interval: 800, autoStart: true } });
-  bot.on("polling_error", (e) => console.error("polling:", e.message));
+  bot = new TelegramBot(config.botToken, config.useWebhook ? {} : { polling: { interval: 900, autoStart: false } });
+
+  // 409 Conflict — boshqa instance getUpdates qilayotgan bo'lsa, navbat bilan qayta ulanamiz
+  let conflictAt = 0;
+  bot.on("polling_error", async (e) => {
+    const msg = e?.message || "";
+    console.error("polling:", msg);
+    if (!/409|Conflict|terminated by other/i.test(msg)) return;
+    const now = Date.now();
+    if (now - conflictAt < 30000) return;
+    conflictAt = now;
+    try {
+      await bot.stopPolling({ cancel: true });
+      await bot.deleteWebHook({ drop_pending_updates: false }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 12000));
+      await bot.startPolling({ restart: true });
+      console.log("♻️ polling qayta ishga tushdi (409 tozalandi)");
+    } catch (err) {
+      console.error("polling restart:", err.message);
+    }
+  });
   bot.on("webhook_error", (e) => console.error("webhook:", e.message));
 
   if (config.useWebhook) {
@@ -297,7 +334,13 @@ function startBot() {
       .then(() => console.log("🤖 Bot ready (webhook):", url))
       .catch((e) => console.error("setWebHook:", e.message));
   } else {
-    console.log("🤖 Bot ready (polling)");
+    // Webhook qolib ketgan bo'lsa polling ishlamaydi — avval o'chiramiz
+    bot
+      .deleteWebHook({ drop_pending_updates: true })
+      .catch(() => {})
+      .then(() => bot.startPolling({ restart: true }))
+      .then(() => console.log("🤖 Bot ready (polling, webhook tozalandi)"))
+      .catch((e) => console.error("startPolling:", e.message));
   }
 
   // Bot username'ni saqlab olamiz — kanal postidagi tugma uchun kerak
@@ -319,8 +362,9 @@ function startBot() {
     console.error("bot_product_wizard:", e.message);
   }
 
-  bot.onText(/^\/start(?:\s+(\S+))?/, async (msg) => {
+  bot.onText(/^\/start(?:\s+(\S+))?/, async (msg, match) => {
     const f = msg.from;
+    const payload = (match && match[1]) || "";
     q.upsertUser.run(f.id, f.username || null, f.first_name || null, f.last_name || null);
     const row = q.getUser.get(f.id);
     if (row?.blocked) return safeSend(msg.chat.id, tr(row.lang || "uz", "blocked"));
@@ -328,6 +372,10 @@ function startBot() {
     // Profil suratini fon rejimida yangilaymiz
     fetchAndStorePhoto(f.id).catch(() => {});
     await continueOnboarding(msg.chat.id, f.id, f.first_name);
+
+    // Kanaldagi "🛒 Sotib olish" tugmasi: /start p_123
+    const pm = /^p[_-]?(\d+)$/i.exec(payload);
+    if (pm) await sendProductCard(msg.chat.id, Number(pm[1]), f.id);
   });
 
   bot.onText(/^\/lang/, (msg) => safeSend(msg.chat.id, tr(userLang(msg.from.id), "choose_lang"), langKeyboard()));
@@ -506,6 +554,51 @@ async function notifyOrderStatus(order, comment) {
   );
 }
 
+/* ----------------- Deep-link: mahsulot kartochkasi ----------------- */
+async function sendProductCard(chatId, productId, userId) {
+  if (!bot) return;
+  const p = q.getProd.get(productId);
+  const lang = userLang(userId || chatId);
+  if (!p || !p.active) return safeSend(chatId, "❌ Mahsulot topilmadi yoki sotuvda emas.");
+  const s = getSettings();
+  const cur = esc(p.currency || s.currency);
+  const name = p[`name_${lang}`] || p.name_uz || "Mahsulot";
+  const desc = p[`desc_${lang}`] || p.desc_uz || "";
+  const priceLine = p.old_price && p.old_price > p.price
+    ? `<s>${money(p.old_price)}</s> <b>${money(p.price)}</b> ${cur}`
+    : `<b>${money(p.price)}</b> ${cur}`;
+  const caption =
+    `🛍 <b>${esc(name)}</b>\n\n` +
+    (desc ? `${esc(desc).slice(0, 600)}\n\n` : "") +
+    `💰 ${priceLine}\n` +
+    (p.brand ? `🏷 ${esc(p.brand)}\n` : "") +
+    (p.sizes ? `📏 ${esc(p.sizes)}\n` : "") +
+    (p.colors ? `🎨 ${esc(p.colors)}\n` : "") +
+    `\n👇 Sotib olish uchun do'konni oching`;
+
+  const kb = config.publicUrl.startsWith("https://")
+    ? { inline_keyboard: [[{ text: "🛒 Sotib olish", web_app: { url: `${config.publicUrl}/?lang=${lang}#/product/${productId}` } }]] }
+    : undefined;
+
+  const imgs = (q.imgsForProd.all(productId) || []).slice(0, 10);
+  const src = (im) => im.file_id || (im.url?.startsWith("http") ? im.url : `${config.publicUrl}${im.url}`);
+  try {
+    if (imgs.length > 1) {
+      await bot.sendMediaGroup(chatId, imgs.map((im, i) => ({
+        type: "photo", media: src(im), ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
+      })));
+      if (kb) await bot.sendMessage(chatId, `👆 <b>${esc(name)}</b>`, { parse_mode: "HTML", reply_markup: kb });
+    } else if (imgs.length === 1) {
+      await bot.sendPhoto(chatId, src(imgs[0]), { caption, parse_mode: "HTML", reply_markup: kb });
+    } else {
+      await safeSend(chatId, caption, { parse_mode: "HTML", reply_markup: kb });
+    }
+  } catch (e) {
+    logger.warn("bot", `Mahsulot kartochkasi yuborilmadi: ${e.message}`, null, productId);
+    await safeSend(chatId, caption, { parse_mode: "HTML", reply_markup: kb });
+  }
+}
+
 /* --------------------------- Kanalga post --------------------------- */
 async function postProductToChannel(productId) {
   if (!bot || !config.postProductsToChannel) return null;
@@ -536,22 +629,26 @@ async function postProductToChannel(productId) {
     : undefined;
 
   try {
+    // file_id bo'lsa — Telegram serverdan qayta yuklamaydi (eng barqaror yo'l)
+    const src = (im) => im.file_id || (im.url.startsWith("http") ? im.url : `${config.publicUrl}${im.url}`);
+    const remember = (im, res) => {
+      const fid = res?.photo?.slice(-1)?.[0]?.file_id;
+      if (fid && !im.file_id) { try { q.setImgFileId.run(fid, im.id); } catch (e) {} }
+    };
     if (imgs.length > 1) {
-      const media = imgs.map((im, i) => {
-        const url = im.url.startsWith("http") ? im.url : `${config.publicUrl}${im.url}`;
-        return {
-          type: "photo",
-          media: url,
-          ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
-        };
-      });
-      await bot.sendMediaGroup(config.channelId, media);
+      const media = imgs.map((im, i) => ({
+        type: "photo",
+        media: src(im),
+        ...(i === 0 ? { caption, parse_mode: "HTML" } : {}),
+      }));
+      const sent = await bot.sendMediaGroup(config.channelId, media);
+      (sent || []).forEach((res, i) => imgs[i] && remember(imgs[i], res));
       if (kb) {
         await bot.sendMessage(config.channelId, `👆 <b>${esc(name)}</b>`, { parse_mode: "HTML", reply_markup: kb });
       }
     } else if (imgs.length === 1) {
-      const url = imgs[0].url.startsWith("http") ? imgs[0].url : `${config.publicUrl}${imgs[0].url}`;
-      await bot.sendPhoto(config.channelId, url, { caption, parse_mode: "HTML", reply_markup: kb });
+      const res = await bot.sendPhoto(config.channelId, src(imgs[0]), { caption, parse_mode: "HTML", reply_markup: kb });
+      remember(imgs[0], res);
     } else {
       await bot.sendMessage(config.channelId, caption, { parse_mode: "HTML", reply_markup: kb });
     }

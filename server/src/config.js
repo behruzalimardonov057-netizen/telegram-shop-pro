@@ -21,8 +21,12 @@ function resolvePublicUrl() {
   return url;
 }
 
+const DATA_DIR = (process.env.DATA_DIR || "").trim() || require("path").join(__dirname, "..", "..");
+
 const config = {
   isProd,
+  dataDir: DATA_DIR,
+  uploadDir: (process.env.UPLOAD_DIR || "").trim() || require("path").join(DATA_DIR, "uploads"),
   port: Number(process.env.PORT) || 3000,
   botToken: (process.env.BOT_TOKEN || "").trim(),
   publicUrl: resolvePublicUrl(),

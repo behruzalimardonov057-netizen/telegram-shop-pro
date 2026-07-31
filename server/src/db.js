@@ -2,7 +2,9 @@ const Database = require("better-sqlite3");
 const path = require("path");
 const bcrypt = require("bcryptjs");
 
-const DB_FILE = process.env.DB_FILE || path.join(__dirname, "..", "..", "shop.db");
+const DATA_DIR = (process.env.DATA_DIR || "").trim() || path.join(__dirname, "..", "..");
+try { require("fs").mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
+const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "shop.db");
 const db = new Database(DB_FILE);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
@@ -156,6 +158,8 @@ addColumn("orders", "receipt", "TEXT");
 addColumn("users", "last_seen", "INTEGER");
 addColumn("users", "lang_set", "INTEGER DEFAULT 0");
 addColumn("users", "photo_url", "TEXT");
+addColumn("users", "photo_file_id", "TEXT");
+addColumn("product_images", "file_id", "TEXT");
 addColumn("products", "sold", "INTEGER DEFAULT 0");
 addColumn("countries", "free_from", "INTEGER DEFAULT 0");
 addColumn("promo_codes", "min_total", "INTEGER DEFAULT 0");
@@ -279,6 +283,8 @@ const q = {
 
   // Product images
   addImg: db.prepare("INSERT INTO product_images (product_id, url, sort) VALUES (?,?,?)"),
+  addImgFull: db.prepare("INSERT INTO product_images (product_id, url, sort, file_id) VALUES (?,?,?,?)"),
+  setImgFileId: db.prepare("UPDATE product_images SET file_id=? WHERE id=?"),
   delImgsForProd: db.prepare("DELETE FROM product_images WHERE product_id=?"),
   imgsForProd: db.prepare("SELECT * FROM product_images WHERE product_id=? ORDER BY sort, id"),
 
@@ -357,6 +363,11 @@ const q = {
   countProducts: db.prepare("SELECT COUNT(*) c FROM products"),
   setLangSet: db.prepare("UPDATE users SET lang_set = 1 WHERE tg_id = ?"),
   setPhotoUrl: db.prepare("UPDATE users SET photo_url = ? WHERE tg_id = ?"),
+  setPhotoFileId: db.prepare("UPDATE users SET photo_file_id = ? WHERE tg_id = ?"),
+  countUserOrders: db.prepare("SELECT COUNT(*) c FROM orders WHERE user_id=?"),
+  countUserFavs: db.prepare("SELECT COUNT(*) c FROM favorites WHERE user_id=?"),
+  countUserCart: db.prepare("SELECT COALESCE(SUM(qty),0) c FROM cart_items WHERE user_id=?"),
+  sumUserSpent: db.prepare("SELECT COALESCE(SUM(total),0) s FROM orders WHERE user_id=? AND status != 'cancelled'"),
   markSeen: db.prepare("UPDATE users SET last_seen = strftime('%s','now') WHERE tg_id = ?"),
 };
 

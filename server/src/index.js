@@ -92,7 +92,7 @@ app.use(
 
 app.get("/healthz", (req, res) => res.json({ ok: true, uptime: Math.floor(process.uptime()) }));
 
-app.use("/uploads", express.static(path.join(ROOT, "uploads"), { maxAge: "30d", index: false, dotfiles: "deny" }));
+app.use("/uploads", express.static(config.uploadDir, { maxAge: "30d", index: false, dotfiles: "deny" }));
 app.use(express.static(path.join(ROOT, "public"), { maxAge: "1h", index: false }));
 
 app.use("/api", adminOps);
