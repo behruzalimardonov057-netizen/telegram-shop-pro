@@ -32,6 +32,22 @@ function getLang() {
   return localStorage.getItem("lang") || p.get("lang") || tg?.initDataUnsafe?.user?.language_code?.slice(0, 2) || "uz";
 }
 
+/* ------------------------------ Tema ------------------------------ */
+const THEMES = [
+  { id: "light", name: "Oq", c1: "#ffffff", c2: "#7000ff" },
+  { id: "dark", name: "Qora", c1: "#0e1116", c2: "#8b5cf6" },
+  { id: "pink", name: "Pushti", c1: "#ff7ab8", c2: "#e5157f" },
+  { id: "blue", name: "Ko'k", c1: "#38bdf8", c2: "#1063e0" },
+];
+function getTheme() { return localStorage.getItem("theme") || "light"; }
+function applyTheme(id) {
+  document.documentElement.dataset.theme = id;
+  localStorage.setItem("theme", id);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = id === "dark" ? "#0e1116" : "#ffffff";
+}
+applyTheme(getTheme());
+
 /* ------------------------------ API ------------------------------ */
 const initData = tg?.initData || "";
 async function api(path, opts = {}) {
@@ -640,33 +656,141 @@ function FavoritesPage({ lang, go, config }) {
     </div>`;
 }
 
-function ProfilePage({ lang, setLang, go, user, config }) {
+function ProfilePage({ lang, setLang, go, user, config, favCount, cartCount, toggleFavNoop }) {
   const t = T[lang];
+  const [theme, setTheme] = useState(getTheme());
+  const [ordersCount, setOrdersCount] = useState(null);
+  const [openLang, setOpenLang] = useState(false);
+  const [notif, setNotif] = useState(localStorage.getItem("notif") !== "0");
+  const [addr, setAddr] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("addr") || "{}"); } catch { return {}; }
+  });
+  const [editAddr, setEditAddr] = useState(false);
+
+  useEffect(() => { api("/orders").then((r) => setOrdersCount(r.length)).catch(() => setOrdersCount(0)); }, []);
+
   const support = config?.support_username ? `https://t.me/${String(config.support_username).replace(/^@/, "")}` : null;
+  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "Mehmon";
+  const photo = tg?.initDataUnsafe?.user?.photo_url;
+  const saveAddr = () => {
+    localStorage.setItem("addr", JSON.stringify(addr));
+    setEditAddr(false);
+    toast("Manzil saqlandi", "ok");
+  };
+  const share = () => {
+    const url = config?.bot_username ? `https://t.me/${String(config.bot_username).replace(/^@/, "")}` : location.origin;
+    const link = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent((config?.shop_name || "Do'kon") + " — kiyimlar do'koni")}`;
+    tg?.openTelegramLink ? tg.openTelegramLink(link) : window.open(link, "_blank");
+  };
+
   return html`
-    <div class="pb-24">
-      <${TopBar} title=${t.profile}/>
-      <div class="p-4 space-y-3">
-        <div class="card-box flex items-center gap-3">
-          <div class="avatar">${(user?.first_name || "?")[0]}</div>
+    <div class="pb-28 fadein">
+      <div class="pro-head">
+        <div class="flex items-center gap-3">
+          <div class="pro-av">${photo ? html`<img src=${photo} alt=""/>` : (fullName[0] || "?")}</div>
           <div class="min-w-0">
-            <div class="font-semibold truncate">${[user?.first_name, user?.last_name].filter(Boolean).join(" ") || "—"}</div>
-            <div class="text-[13px] opacity-55 truncate">${user?.username ? "@" + user.username : user?.phone || ""}</div>
+            <div class="pname truncate">${fullName}</div>
+            <div class="psub truncate">${user?.username ? "@" + user.username : (user?.phone || "ID: " + (user?.id || "—"))}</div>
+            ${user?.is_admin && html`<div class="pro-badge">👑 Admin</div>`}
           </div>
         </div>
-        <button onClick=${() => go("/orders")} class="menu-row">📦 ${t.my_orders} <span class="opacity-40">›</span></button>
-        <button onClick=${() => go("/favorites")} class="menu-row">❤️ ${t.favorites} <span class="opacity-40">›</span></button>
-        ${support && html`<a href=${support} target="_blank" class="menu-row">💬 ${t.support} <span class="opacity-40">›</span></a>`}
-        ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="menu-row">📞 ${config.support_phone} <span class="opacity-40">›</span></a>`}
-        <div class="card-box">
-          <div class="text-xs opacity-60 mb-2">🌐 ${t.change_lang}</div>
-          <div class="grid grid-cols-2 gap-2">
-            ${Object.entries(LANG_NAMES).map(([k, v]) => html`
-              <button key=${k} onClick=${() => { haptic(); setLang(k); }} class=${lang === k ? "opt opt-on" : "opt"}>${v}</button>`)}
+      </div>
+
+      <div class="pro-stats">
+        <button class="pro-stat" onClick=${() => go("/orders")}>
+          <b>${ordersCount === null ? "…" : ordersCount}</b><span>${t.my_orders}</span>
+        </button>
+        <button class="pro-stat" onClick=${() => go("/favorites")}>
+          <b>${favCount}</b><span>${t.favorites}</span>
+        </button>
+        <button class="pro-stat" onClick=${() => go("/cart")}>
+          <b>${cartCount}</b><span>${t.cart}</span>
+        </button>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <div class="pro-quick">
+          <button class="qbtn" onClick=${() => go("/orders")}><i>📦</i>Buyurtmalar</button>
+          <button class="qbtn" onClick=${() => go("/favorites")}><i>❤️</i>Sevimli</button>
+          <button class="qbtn" onClick=${() => go("/cart")}><i>🛒</i>Savat</button>
+          <button class="qbtn" onClick=${() => go("/catalog")}><i>👗</i>Katalog</button>
+        </div>
+
+        <div>
+          <div class="grp-title">🎨 Do'kon rangi</div>
+          <div class="grp p-3 flex items-center justify-between">
+            ${THEMES.map((th) => html`
+              <button key=${th.id} class=${theme === th.id ? "dotc on" : "dotc"}
+                onClick=${() => { haptic(); setTheme(th.id); applyTheme(th.id); }}
+                aria-label=${th.name}>
+                <i style=${`background:linear-gradient(135deg,${th.c1},${th.c2})`}></i>
+              </button>`)}
+            <div class="text-xs opacity-60 pl-1">${THEMES.find((x) => x.id === theme)?.name}</div>
           </div>
         </div>
+
+        <div>
+          <div class="grp-title">🚚 Yetkazib berish</div>
+          <div class="grp">
+            <button class="row-item" onClick=${() => setEditAddr((v) => !v)}>
+              <span class="ri-ico">📍</span>
+              <span class="flex-1 min-w-0">
+                <span class="block">Mening manzilim</span>
+                <span class="block text-[11.5px] opacity-55 truncate">${[addr.city, addr.address].filter(Boolean).join(", ") || "Kiritilmagan"}</span>
+              </span>
+              <span class="ri-r">${editAddr ? "▲" : "›"}</span>
+            </button>
+            ${editAddr && html`
+              <div class="p-4 pt-1 space-y-2">
+                <div><div class="lbl">${t.name}</div><input class="fld" value=${addr.name || ""} onInput=${(e) => setAddr({ ...addr, name: e.target.value })}/></div>
+                <div><div class="lbl">${t.phone}</div><input class="fld" value=${addr.phone || ""} onInput=${(e) => setAddr({ ...addr, phone: e.target.value })}/></div>
+                <div><div class="lbl">${t.city}</div><input class="fld" value=${addr.city || ""} onInput=${(e) => setAddr({ ...addr, city: e.target.value })}/></div>
+                <div><div class="lbl">${t.address}</div><input class="fld" value=${addr.address || ""} onInput=${(e) => setAddr({ ...addr, address: e.target.value })}/></div>
+                <button class="btn-primary w-full mt-1" onClick=${saveAddr}>Saqlash</button>
+              </div>`}
+          </div>
+        </div>
+
+        <div>
+          <div class="grp-title">⚙️ Sozlamalar</div>
+          <div class="grp">
+            <button class="row-item" onClick=${() => setOpenLang((v) => !v)}>
+              <span class="ri-ico">🌐</span><span>${t.change_lang}</span>
+              <span class="ri-r">${LANG_NAMES[lang]} ${openLang ? "▲" : "›"}</span>
+            </button>
+            ${openLang && html`
+              <div class="p-3 pt-0 grid grid-cols-2 gap-2">
+                ${Object.entries(LANG_NAMES).map(([k, v]) => html`
+                  <button key=${k} onClick=${() => { haptic(); setLang(k); setOpenLang(false); }} class=${lang === k ? "opt opt-on" : "opt"}>${v}</button>`)}
+              </div>`}
+            <div class="row-item">
+              <span class="ri-ico">🔔</span><span>Bildirishnomalar</span>
+              <button class=${notif ? "sw on ml-auto" : "sw ml-auto"} onClick=${() => { haptic(); const n = !notif; setNotif(n); localStorage.setItem("notif", n ? "1" : "0"); }}></button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="grp-title">💬 Yordam va do'kon</div>
+          <div class="grp">
+            ${support && html`<a href=${support} target="_blank" class="row-item"><span class="ri-ico">💬</span><span>${t.support}</span><span class="ri-r">›</span></a>`}
+            ${config?.support_phone && html`<a href=${"tel:" + config.support_phone} class="row-item"><span class="ri-ico">📞</span><span>${config.support_phone}</span><span class="ri-r">›</span></a>`}
+            <button class="row-item" onClick=${share}><span class="ri-ico">📤</span><span>Do'konni ulashish</span><span class="ri-r">›</span></button>
+            <button class="row-item" onClick=${() => go("/catalog")}><span class="ri-ico">🏬</span><span>${config?.shop_name || "Do'kon"} — katalog</span><span class="ri-r">›</span></button>
+          </div>
+        </div>
+
+        ${user?.is_admin && html`
+          <div>
+            <div class="grp-title">👑 Admin</div>
+            <div class="grp">
+              <a href="/admin.html" target="_blank" class="row-item"><span class="ri-ico">🛠</span><span>Admin panel</span><span class="ri-r">›</span></a>
+              <button class="row-item" onClick=${() => { tg?.close?.(); }}><span class="ri-ico">➕</span><span>Botda mahsulot qo'shish (/qoshish)</span><span class="ri-r">›</span></button>
+            </div>
+          </div>`}
+
         ${config?.about && html`<div class="card-box text-[13px] opacity-75 whitespace-pre-line">${config.about}</div>`}
-        <div class="text-center text-[11px] opacity-35 pt-2">${config?.shop_name || ""} · v2.0</div>
+        <div class="text-center text-[11px] opacity-35 pt-1">${config?.shop_name || ""} · v3.0</div>
       </div>
     </div>`;
 }
@@ -739,7 +863,7 @@ function App() {
   else if (path.startsWith("/product/")) page = html`<${ProductPage} lang=${lang} go=${go} id=${path.split("/")[2]} refreshCart=${refreshCart} config=${config} favIds=${favIds} toggleFav=${toggleFav}/>`;
   else if (path === "/cart") page = html`<${CartPage} lang=${lang} go=${go} refreshCart=${refreshCart} cart=${cart} config=${config}/>`;
   else if (path === "/checkout") page = html`<${CheckoutPage} lang=${lang} go=${go} refreshCart=${refreshCart} cart=${cart} config=${config}/>`;
-  else if (path === "/profile") page = html`<${ProfilePage} lang=${lang} setLang=${setLang} go=${go} user=${user} config=${config}/>`;
+  else if (path === "/profile") page = html`<${ProfilePage} lang=${lang} setLang=${setLang} go=${go} user=${user} config=${config} favCount=${favIds.size} cartCount=${cartCount}/>`;
   else if (path.startsWith("/orders/")) page = html`<${OrderPage} lang=${lang} id=${path.split("/")[2]} go=${go}/>`;
   else if (path === "/orders") page = html`<${OrdersPage} lang=${lang} go=${go}/>`;
   else if (path === "/favorites") page = html`<${FavoritesPage} lang=${lang} go=${go} config=${config}/>`;
