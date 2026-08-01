@@ -100,7 +100,8 @@ router.post("/me", tgAuth, (req, res) => {
   const u = req.user;
   q.upsertUser.run(u.id, u.username || null, u.first_name || null, u.last_name || null);
   q.markSeen.run(u.id);
-  res.json({ user: q.getUser.get(u.id) });
+  const row = q.getUser.get(u.id);
+  res.json({ user: { ...row, is_admin: config.adminIds.includes(Number(u.id)) } });
 });
 
 router.post("/set-lang", tgAuth, validate(z.object({ lang: z.enum(LANGS) })), (req, res) => {
